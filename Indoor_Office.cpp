@@ -176,22 +176,22 @@ public:
 
         //Азимутальный угол Разброс вылета (ASD)
         std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, 0.18);
-        double loSAzimuthSpreadDeparture = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), 104.0 * M_PI / 180.0);
+        double loSAzimuthSpreadDeparture = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)),log10( 104.0 ));
 
         //Азимутальный угол Разброс прихода (ASA)
         std::normal_distribution<> loSAzimuthSpreadArrivalDist(1.69037, 0.07224);
-        double loSAzimuthSpreadArrival = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), 104.0 * M_PI / 180.0);
+        double loSAzimuthSpreadArrival = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
         //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent ZSD 
         //and ZOD offset parameters in Table 7.5 - 7 and 7.5 - 10
 
         //Зенитный угол Разброс прихода (ZSA)
-        double loSZenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.22027, 0.230196)), 52.0 * M_PI / 180.0);
+        double loSZenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.22027, 0.230196)), log10(52.0));
 
         // Нет в таблице 7.5-6
         //Зенитный угол Разброс вылета (ZSD)
-        double loSZenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.01951, 0.409863)), 52.0 * M_PI / 180.0);
+        double loSZenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.01951, 0.409863)), log10(52.0));
 
         return LargeScaleParameters(loSShadowFading, riceanK, loSDelaySpread, loSAzimuthSpreadDeparture, loSAzimuthSpreadArrival, loSZenithSpreadDeparture, loSZenithSpreadArrival);
     }
@@ -384,12 +384,12 @@ public:
     double los_C_ASA = 8.0;
     double los_C_ASD = 5.0;
     double los_C_ZSA = 9.0;
-    double los_C_ZSD = 3.75;
+    double los_C_ZSD = 0.375;
 
     double nlos_C_ASA = 11.0;
     double nlos_C_ASD = 5.0;
     double nlos_C_ZSA = 9.0;
-    double nlos_C_ZSD = 3.75;
+    double nlos_C_ZSD = 0.375;
 
     std::vector<double> am = { 0.0447, -0.0447 ,0.1413 ,-0.1413,0.2492 ,-0.2492 ,0.3715 ,-0.3715 ,0.5129 ,-0.5129 ,
         0.6797 ,-0.6797, 0.8844 , -0.8844,1.1481,-1.1481, 1.5195 , -1.5195, 2.1551 , -2.1551 };
@@ -418,13 +418,14 @@ public:
             double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
             if (n < 15) {
-                double C_phi = 1.211 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+                double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
                 Phi_n_AOA[n] = (2 * (losAzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
                 double Yn = generateNormalRandom(0, (losAzimuthSpreadArrival / 7) * (losAzimuthSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOA = Phi_n_AOA[n]; }
 
-                Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA;
+                Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA - Phi_1_AOA * X1 - Y1;
+                
 
                 for (int m = 0; m < 20; ++m) {
                     Phi_n_m_AOA(n, m) = Phi_n_AOA[n] + los_C_ASA * am[m];
@@ -437,7 +438,7 @@ public:
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOA = Phi_n_AOA[n]; }
 
-                Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA - Phi_1_AOA * X1 - Y1;
+                Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA;
 
                 for (int m = 0; m < 20; ++m) {
                     Phi_n_m_AOA(n, m) = Phi_n_AOA[n] + nlos_C_ASA * am[m];
@@ -469,13 +470,13 @@ public:
             double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
             if (n < 15) {
-                double C_phi = 1.211 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+                double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
                 Phi_n_AOD[n] = (2 * (losAzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
                 double Yn = generateNormalRandom(0, (losAzimuthSpreadDeparture / 7) * (losAzimuthSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOD = Phi_n_AOD[n]; }
 
-                Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD;
+                Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD - Phi_1_AOD * X1 - Y1;
 
 
                 for (int m = 0; m < 20; ++m) {
@@ -489,7 +490,8 @@ public:
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOD = Phi_n_AOD[n]; }
 
-                Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD - Phi_1_AOD * X1 - Y1;
+                Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD;
+                
 
                 for (int m = 0; m < 20; ++m) {
                     Phi_n_m_AOD(n, m) = Phi_n_AOD[n] + nlos_C_ASD * am[m];
@@ -521,13 +523,14 @@ public:
             double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
             if (n < 15) {
-                double C_theta = 1.1088 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
-                Theta_n_ZOA[n] = ((-1) * losZenithSpreadArrival * pow(log(clusterPowers[n] / maxPower), 0.5)) / C_theta; // Применение уравнения (7.5-9)
+                double C_theta = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
+                Theta_n_ZOA[n] = ((-1) * losZenithSpreadArrival *(clusterPowers[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
                 double Yn = generateNormalRandom(0, (losZenithSpreadArrival / 7) * (losZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOA = Theta_n_ZOA[n]; }
 
-                Theta_n_ZOA[n] = Theta_n_ZOA[n] * Xn + Yn + losThetaZOA;
+                Theta_n_ZOA[n] = Theta_n_ZOA[n] * Xn + Yn + losThetaZOA - Theta_1_ZOA * X1 - Y1;
+                
 
                 for (int m = 0; m < 20; ++m) {
                     Theta_n_m_ZOA(n, m) = Theta_n_ZOA[n] + los_C_ZSA * am[m];
@@ -536,12 +539,12 @@ public:
             }
             else {
                 double C_theta = 1.184;
-                Theta_n_ZOA[n] = ((-1) * nlosZenithSpreadArrival * pow(log(clusterPowers[n] / maxPower), 0.5)) / C_theta; // Применение уравнения (7.5-9)
+                Theta_n_ZOA[n] = ((-1) * nlosZenithSpreadArrival * (clusterPowers[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
                 double Yn = generateNormalRandom(0, (nlosZenithSpreadArrival / 7) * (nlosZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOA = Theta_n_ZOA[n]; }
 
-                Theta_n_ZOA[n] = Theta_n_ZOA[n] * Xn + Yn + losThetaZOA - Theta_1_ZOA * X1 - Y1;
+                Theta_n_ZOA[n] = Theta_n_ZOA[n] * Xn + Yn + losThetaZOA;
 
                 for (int m = 0; m < 20; ++m) {
                     Theta_n_m_ZOA(n, m) = Theta_n_ZOA[n] + nlos_C_ZSA * am[m];
@@ -570,14 +573,14 @@ public:
             double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
             if (n < 15) {
-                double C_theta = 1.1088 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
-                Theta_n_ZOD[n] = ((-1) * losZenithSpreadDeparture * pow(log(clusterPowers[n] / maxPower), 0.5)) / C_theta; // Применение уравнения (7.5-9)
+                double C_theta = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
+                Theta_n_ZOD[n] = ((-1) * losZenithSpreadDeparture * (clusterPowers[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
                 double Yn = generateNormalRandom(0, (losZenithSpreadDeparture / 7) * (losZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOD = Theta_n_ZOD[n]; }
 
-                Theta_n_ZOD[n] = Theta_n_ZOD[n] * Xn + Yn + losThetaZOD;
-
+                
+                Theta_n_ZOD[n] = Theta_n_ZOD[n] * Xn + Yn + losThetaZOD - Theta_1_ZOD * X1 - Y1;
 
                 for (int m = 0; m < 20; ++m) {
                     Theta_n_m_ZOD(n, m) = Theta_n_ZOD[n] + los_C_ZSD * am[m];
@@ -585,12 +588,12 @@ public:
             }
             else {
                 double C_theta = 1.184;
-                Theta_n_ZOD[n] = ((-1) * nlosZenithSpreadDeparture * pow(log(clusterPowers[n] / maxPower), 0.5)) / C_theta; // Применение уравнения (7.5-9)
+                Theta_n_ZOD[n] = ((-1) * nlosZenithSpreadDeparture * (clusterPowers[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
                 double Yn = generateNormalRandom(0, (nlosZenithSpreadDeparture / 7) * (nlosZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
                 if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOD = Theta_n_ZOD[n]; }
 
-                Theta_n_ZOD[n] = Theta_n_ZOD[n] * Xn + Yn + losThetaZOD - Theta_1_ZOD * X1 - Y1;
+                Theta_n_ZOD[n] = Theta_n_ZOD[n] * Xn + Yn + losThetaZOD;
 
                 for (int m = 0; m < 20; ++m) {
                     Theta_n_m_ZOD(n, m) = Theta_n_ZOD[n] + nlos_C_ZSD * am[m];
