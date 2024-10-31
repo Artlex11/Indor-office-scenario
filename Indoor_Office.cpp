@@ -64,24 +64,42 @@ public:
     }
 
 
-    // поправить
+   
 
-    // Метод для вычисления ДН
-    double antennaPattern(double thetaAngle, double phiAngle) const {
-        double pattern = 0.0;
-        double k = 2 * M_PI / wavelength; // Волновое число
+    // Метод для вычисления ДН полей
+    
+    double getFieldPatternTheta(double thetaAngle, double phiAngle) const {
+        thetaAngle = thetaAngle * 180 / M_PI;
+        phiAngle = phiAngle * 180 / M_PI;
 
-        // Расчет psi1 и psi2 
-        double psi1 = k * d * sin(thetaAngle);
-        double psi2 = k * d * sin(phiAngle);
+        double ksi = +45.0;
+        double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
+        double f2_Phi = sqrt(std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0));
 
-        // Амплитуда антенны 
-        double Af = 1.0; // Амплитуда антенны 
-        // Расчет паттерна 
-        pattern = Af * (sin(numElementsX * psi1 / 2) / sin(psi1 / 2)) * (sin(numElementsY * psi2 / 2) / sin(psi2 / 2));
+        double cos_Pci = (cos(ksi) * sin(thetaAngle) + sin(ksi) * sin(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+        double sin_Pci = (sin(ksi) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
 
-        return std::abs(pattern);
+        double f1_Theta = sin_Pci * f2_Theta + cos_Pci * f2_Phi;
+
+        return std::abs(f1_Theta);
     }
+
+    double getFieldPatternPhi(double thetaAngle, double phiAngle) const {
+        thetaAngle = thetaAngle * 180 / M_PI;
+        phiAngle = phiAngle * 180 / M_PI;
+
+        double ksi = +45.0;
+        double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
+        double f2_Phi = sqrt(std::min(12 * ((thetaAngle - 90)/65) * ((thetaAngle - 90) / 65), 30.0));
+
+        double cos_Pci = (cos(ksi) * sin(thetaAngle) + sin(ksi) * sin(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+        double sin_Pci = (sin(ksi) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+
+        double f1_Phi = cos_Pci * f2_Theta - sin_Pci * f2_Phi;
+
+        return std::abs(f1_Phi);
+    }
+    
 
 
 
@@ -129,32 +147,6 @@ public:
 
 
 
-    // был нужен как черновой вариант ( в модели не используется ) 
-    std::complex<double> transmit(const UserTerminal& transmitter, const UserTerminal& receiver, std::complex<double> signal) {
-        // Прямое расстояние 
-        double directDistance = calculateDistance(transmitter, receiver);
-        std::complex<double> directComponent = std::polar(1.0 / directDistance, 0.0); // Прямой компонент
-
-        // Генерация случайных компонентов
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> amplitudeDist(0.0, 1.0);
-        std::uniform_real_distribution<> phaseDist(0.0, 2 * M_PI);
-
-        std::complex<double> multipathComponent(0.0, 0.0);
-        for (int i = 0; i < numPaths - 1; ++i) {
-            double amplitude = amplitudeDist(gen);
-            double phase = phaseDist(gen);
-            multipathComponent += std::polar(amplitude, phase);
-        }
-
-        // Нормализация многопутевого компонента 
-        multipathComponent /= std::sqrt(numPaths - 1);
-
-        std::complex<double> receivedSignal = (directComponent + multipathComponent) * signal;
-
-        return receivedSignal;
-    }
 
     // для 3ГГц 
     // Генерация LSP(Large Scale Parameters) для пользователя для LoS
@@ -215,18 +207,18 @@ public:
 
         //Азимутальный угол Разброс вылета (ASD)
         std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(1.62, 0.25);
-        double nLoSAzimuthSpreadDeparture = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), 104.0 * M_PI / 180.0);
+        double nLoSAzimuthSpreadDeparture = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)),log10( 104.0) );
 
         //Азимутальный угол Разброс прихода (ASA)
         std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(1.69037, 0.07224);
-        double nLoSAzimuthSpreadArrival = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), 104.0 * M_PI / 180.0);
+        double nLoSAzimuthSpreadArrival = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0) );
 
         
         //Зенитный угол Разброс прихода (ZSA)
-        double nLoSZenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.26024, 0.669941)), 52.0 * M_PI / 180.0);
+        double nLoSZenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.26024, 0.669941)), log10(52.0));
 
         //Зенитный угол Разброс вылета (ZSD)
-        double nLoSZenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.08, 0.36)), 52.0 * M_PI / 180.0);
+        double nLoSZenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.08, 0.36)), log10(52.0));
 
         return LargeScaleParameters(nLoSShadowFading, nLoSRiceanK, nLoSDelaySpread, nLoSAzimuthSpreadDeparture, nLoSAzimuthSpreadArrival, nLoSZenithSpreadDeparture, nLoSZenithSpreadArrival);
     }
@@ -654,8 +646,24 @@ int main() {
         const UserTerminal& transmitter = users[pair.first];
         const UserTerminal& receiver = users[pair.second];
 
+
+
+        // Расчёт лос угов и соовтетствующих значений ДН полей приёмника и передатчика
         double losPhiAOD, losThetaZOD, losPhiAOA, losThetaZOA;
         transmitter.calculateLOSAngles(transmitter,receiver, losPhiAOD, losThetaZOD, losPhiAOA, losThetaZOA);
+
+        std::cout << "LOS AOD: (" << losPhiAOD << ", " << losThetaZOD << "), "
+            << "LOS AOA: (" << losPhiAOA << ", " << losThetaZOA << ")\n" << std::endl;
+
+        double F_tx_Theta = transmitter.getFieldPatternTheta(losThetaZOD, losPhiAOD);
+        double F_tx_Pfi = transmitter.getFieldPatternPhi(losThetaZOD, losPhiAOD);
+        std::cout << "F_tx_Theta(theta,pfi) : " << F_tx_Theta << "\n ";
+        std::cout << "F_tx_Pfi(theta,pfi) : " << F_tx_Pfi << "\n ";
+
+        double F_rx_Theta = receiver.getFieldPatternTheta(losThetaZOD, losPhiAOD);
+        double F_rx_Pfi = receiver.getFieldPatternPhi(losThetaZOA, losPhiAOA);
+        std::cout << "F_rx_Theta(theta,pfi) : " << F_rx_Theta << "\n ";
+        std::cout << "F_rx_Pfi(theta,pfi) : " << F_rx_Pfi << "\n ";
 
         LargeScaleParameters lspForLoS = channel.generateLargeScaleParametersForLoS();
         LargeScaleParameters lspForNLoS = channel.generateLargeScaleParametersForNLoS();
@@ -755,6 +763,7 @@ int main() {
 
         //_____________STEP_10_______________//
         MatrixXd initialPhases = channel.generateInitialRandomPhases(34,20);
+        /*
         std::cout << "Initial random phases for each ray in each cluster:" << std::endl;
         for (int n = 0; n < 34; ++n) {
             std::cout << "Cluster " << n + 1 << ": \n";
@@ -767,21 +776,7 @@ int main() {
             }
             std::cout << std::endl;
         }
-      
-
-        std::complex<double> receivedSignal = channel.transmit(transmitter, receiver, signal);
-
-        // Печать информации о передаче
-        double patternTransmitter = transmitter.antennaPattern(losThetaZOD, losPhiAOD);
-        double patternReceiver = receiver.antennaPattern(losThetaZOA, losPhiAOA);
-
-        std::cout << "Transmission from User " << transmitter.id << " to User " << receiver.id
-            << " - Received Signal: " << receivedSignal
-            << " | Transmitter Pattern: " << patternTransmitter << " | Receiver Pattern: " << patternReceiver << std::endl;
-
-        std::cout << "LOS AOD: (" << losPhiAOD << ", " << losThetaZOD << "), "
-            << "LOS AOA: (" << losPhiAOA << ", " << losThetaZOA << ")\n" << std::endl;
-
+        */
         //________________________________STEP_2___________________________________________________________//
 
                 // Вычисление расстояния между передатчиком и приемником
