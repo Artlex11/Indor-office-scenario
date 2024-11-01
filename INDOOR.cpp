@@ -226,63 +226,63 @@ public:
     // Генерация SSP(Small Scale Parameters)
 
     std::vector<double> generateClusterDelays(double losdelaySpread, double nlosdelaySpread, double riceanK)
-        {
-            std::random_device rn;
-            std::mt19937 gen(rn());
+    {
+        std::random_device rn;
+        std::mt19937 gen(rn());
 
-            double delay_tau_n;
-            delays_tau.clear();
+        double delay_tau_n;
+        delays_tau.clear();
 
-            std::random_device(rd);
-            std::default_random_engine re(rd());
-            std::uniform_int_distribution<int>dist(0, 1);
-            int k = dist(re);
-            
-            /*delay_tau_n = -1 * los_r_tau * log(Xn) * losdelaySpread;
-            delay_tau_n = -1 * nlos_r_tau * log(Xn) * nlosdelaySpread;
-            delays_tau.push_back(delay_tau_n);*/
+        std::random_device(rd);
+        std::default_random_engine re(rd());
+        std::uniform_int_distribution<int>dist(0, 1);
+        int k = dist(re);
 
-            if (k == 0) {
-                for (int n = 0; n < 15; ++n)
-                {
-                    double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
-                    delay_tau_n = -1 * los_r_tau * log(Xn) * losdelaySpread;
-                    delays_tau.push_back(delay_tau_n);
-                }
+        /*delay_tau_n = -1 * los_r_tau * log(Xn) * losdelaySpread;
+        delay_tau_n = -1 * nlos_r_tau * log(Xn) * nlosdelaySpread;
+        delays_tau.push_back(delay_tau_n);*/
+
+        if (k == 0) {
+            for (int n = 0; n < 15; ++n)
+            {
+                double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
+                delay_tau_n = -1 * los_r_tau * log(Xn) * losdelaySpread;
+                delays_tau.push_back(delay_tau_n);
             }
-            else {
-                for (int n = 0; n < 19; ++n)
-                {
-                    double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
-                    delay_tau_n = -1 * nlos_r_tau * log(Xn) * nlosdelaySpread;
-                    delays_tau.push_back(delay_tau_n);
-                }
-                
-            }
-            
-    
-
-            // Нормализация задержек
-            double minDelay_tau_n = *std::min_element(delays_tau.begin(), delays_tau.end());
-            for (auto& delay_tau_n : delays_tau) {
-                delay_tau_n -= minDelay_tau_n; // Вычитаем минимальное значение
+        }
+        else {
+            for (int n = 0; n < 19; ++n)
+            {
+                double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
+                delay_tau_n = -1 * nlos_r_tau * log(Xn) * nlosdelaySpread;
+                delays_tau.push_back(delay_tau_n);
             }
 
-            // Сортируем задержки
-            std::sort(delays_tau.begin(), delays_tau.end());
+        }
 
-            // дополнительный параметр для LOS лучей, вычисляется через K-фактор, дальше не учитывается
-            /*
-            // Если LOS, применяем масштабирование (The scaled delays are not to be used in cluster power generation. )
-            if (riceanK > 0) { // Если K-фактор положителен
-                double scalingFactor = (0.000017 * riceanK * riceanK * riceanK) + (0.0002 * riceanK * riceanK) + (0.0433 *riceanK) + 0.7705;
 
-                delay[0] /= scalingFactor; // Масштабирование задержек
 
-            }
-            */
+        // Нормализация задержек
+        double minDelay_tau_n = *std::min_element(delays_tau.begin(), delays_tau.end());
+        for (auto& delay_tau_n : delays_tau) {
+            delay_tau_n -= minDelay_tau_n; // Вычитаем минимальное значение
+        }
 
-            return delays_tau; // Возвращаем нормализованные задержки
+        // Сортируем задержки
+        std::sort(delays_tau.begin(), delays_tau.end());
+
+        // дополнительный параметр для LOS лучей, вычисляется через K-фактор, дальше не учитывается
+        /*
+        // Если LOS, применяем масштабирование (The scaled delays are not to be used in cluster power generation. )
+        if (riceanK > 0) { // Если K-фактор положителен
+            double scalingFactor = (0.000017 * riceanK * riceanK * riceanK) + (0.0002 * riceanK * riceanK) + (0.0433 *riceanK) + 0.7705;
+
+            delay[0] /= scalingFactor; // Масштабирование задержек
+
+        }
+        */
+
+        return delays_tau; // Возвращаем нормализованные задержки
     }
 
     //__________________________________________STEP_6____________________________________________________//
@@ -303,7 +303,7 @@ public:
         std::mt19937 gen(rd());
 
         for (size_t n = 0; n < clusterDelays.size(); ++n) {
-           
+
             if (n == 15) {
                 std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
                 double shadowing = shadowFadingDist(gen); // Генерация затенения
@@ -777,7 +777,7 @@ int main() {
 
         //_____________STEP_10_______________//
         /*MatrixXd initialPhases = channel.generateInitialRandomPhases(clusterDelays.size(), 20);
-        
+
         std::cout << "Initial random phases for each ray in each cluster:" << std::endl;
         for (int n = 0; n < 34; ++n) {
             std::cout << "Cluster " << n + 1 << ": \n";
@@ -790,7 +790,7 @@ int main() {
             }
             std::cout << std::endl;
         }*/
-        
+
         //________________________________STEP_2___________________________________________________________//
 
                 // Вычисление расстояния между передатчиком и приемником
@@ -806,7 +806,7 @@ int main() {
             P_LOS = exp(-(d - 49) / 211.7) * 0.54;
 
         std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << std::endl << std::endl;
-       
+
         //__________________________________STEP_3____________________________________________________________//
         // Вычисление Pathloss_LOS для каждой пары
         double path_loss_LOS;
