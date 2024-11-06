@@ -5,8 +5,9 @@
 #include <random>
 #include <cmath>
 #include <set>
-#include <algorithm> // Для std::sort
+#include <algorithm> 
 #include <Eigen/Dense>
+//#include "gnuplot-iostream.h"
 
 using namespace Eigen;
 
@@ -38,90 +39,88 @@ public:
     double azimuthSpreadArrival; // Угловой спред входа 
     double zenithSpreadDeparture; // Зенитный спред выхода 
     double zenithSpreadArrival; // Зенитный спред входа 
+    bool los;
 
-    // Конструктор класса
-    LargeScaleParameters(double sf, double k, double ds, double asd, double asa, double zsd, double zsa)
-        : shadowFading(sf), riceanK(k), delaySpread(ds), azimuthSpreadDeparture(asd),
-        azimuthSpreadArrival(asa), zenithSpreadDeparture(zsd), zenithSpreadArrival(zsa) {}
+
+    LargeScaleParameters() {};
+
+    // Конструктор для лос
+    LargeScaleParameters(bool losvalue) : los(losvalue) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+
+        if (los) {
+            //Если лос :
+            //Затемнение SF
+            std::lognormal_distribution<> loSshadowFadingDist(0, 3);
+            shadowFading = loSshadowFadingDist(gen);
+
+            //К-фактор (K)
+            std::normal_distribution<> riceanKDist0(7, 4);
+            riceanK = std::abs(riceanKDist0(gen));
+
+            // разброс задержки (DS)
+            std::normal_distribution<> loSdelaySpreadDist(-7.69802, 0.18);
+            delaySpread = loSdelaySpreadDist(gen);
+
+            //Азимутальный угол Разброс вылета (ASD)
+            std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, 0.18);
+            azimuthSpreadDeparture = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+
+            //Азимутальный угол Разброс прихода (ASA)
+            std::normal_distribution<> loSAzimuthSpreadArrivalDist(1.69037, 0.07224);
+            azimuthSpreadArrival = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+
+
+            //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent ZSD 
+            //and ZOD offset parameters in Table 7.5 - 7 and 7.5 - 10
+
+            //Зенитный угол Разброс прихода (ZSA)
+            zenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.22027, 0.230196)), log10(52.0));
+
+            // Нет в таблице 7.5-6
+            //Зенитный угол Разброс вылета (ZSD)
+            zenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.01951, 0.409863)), log10(52.0));
+        }
+        else {
+            //Если нлос:
+            //Затенение (SF)
+            std::lognormal_distribution<> nLoSshadowFadingDist(0, 8.03);
+            shadowFading = nLoSshadowFadingDist(gen);
+
+
+            // разброс задержки (DS)
+            std::normal_distribution<> nLoSdelaySpreadDist(-7.34158, 0.115206);
+            delaySpread = nLoSdelaySpreadDist(gen); // Задержка распространения НЛОС
+
+            //Азимутальный угол Разброс вылета (ASD)
+            std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(1.62, 0.25);
+            azimuthSpreadDeparture = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+
+            //Азимутальный угол Разброс прихода (ASA)
+            std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(1.69037, 0.07224);
+            azimuthSpreadArrival = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+
+
+            //Зенитный угол Разброс прихода (ZSA)
+            zenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.26024, 0.669941)), log10(52.0));
+
+            //Зенитный угол Разброс вылета (ZSD)
+            zenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.08, 0.36)), log10(52.0));
+        }
+    };
+
+    void showParameters() {
+        if (los) {
+            // Вывод LSP параметров для NLOS
+            std::cout << "SF: " << shadowFading << ",\nK: " << riceanK << ",\nDS: " << delaySpread << ",\nASA: " << azimuthSpreadArrival << ",\nASD: " << azimuthSpreadDeparture << ",\nZSA: " << zenithSpreadArrival << ",\nZSD: " << zenithSpreadDeparture << std::endl << std::endl;
+        }
+        else {
+            // Вывод LSP параметров для NLOS
+            std::cout << "SF: " << shadowFading << ",\nDS: " << delaySpread << ",\nASA: " << azimuthSpreadArrival << ",\nASD: " << azimuthSpreadDeparture << ",\nZSA: " << zenithSpreadArrival << ",\nZSD: " << zenithSpreadDeparture << std::endl << std::endl;
+        }
+    }
 };
-
-
-//____________________________________Функция_генерации_LSP_для_LOS________________________________________//
-LargeScaleParameters GenerateLargeScaleParametersForLOS()
-{
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
-    //Затемнение SF
-    std::lognormal_distribution<> loSshadowFadingDist(0, 3);
-    double loSShadowFading = loSshadowFadingDist(gen);
-
-    //К-фактор (K)
-    std::normal_distribution<> riceanKDist0(7, 4);
-    double riceanK = std::abs(riceanKDist0(gen));
-
-    // разброс задержки (DS)
-    std::normal_distribution<> loSdelaySpreadDist(-7.69802, 0.18);
-    double loSDelaySpread = std::abs(loSdelaySpreadDist(gen));
-
-    //Азимутальный угол Разброс вылета (ASD)
-    std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, 0.18);
-    double loSAzimuthSpreadDeparture = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
-    //Азимутальный угол Разброс прихода (ASA)
-    std::normal_distribution<> loSAzimuthSpreadArrivalDist(1.69037, 0.07224);
-    double loSAzimuthSpreadArrival = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
-
-    //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent ZSD 
-    //and ZOD offset parameters in Table 7.5 - 7 and 7.5 - 10
-
-    //Зенитный угол Разброс прихода (ZSA)
-    double loSZenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.22027, 0.230196)), log10(52.0));
-
-    // Нет в таблице 7.5-6
-    //Зенитный угол Разброс вылета (ZSD)
-    double loSZenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.01951, 0.409863)), log10(52.0));
-
-    return LargeScaleParameters(loSShadowFading, riceanK, loSDelaySpread, loSAzimuthSpreadDeparture, loSAzimuthSpreadArrival, loSZenithSpreadDeparture, loSZenithSpreadArrival);
-};
-
-
-//____________________________________Функция_генерации_LSP_для_NLOS_______________________________________//
-LargeScaleParameters GenerateLargeScaleParametersForNLOS() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
-    //Затенение (SF)
-    std::lognormal_distribution<> nLoSshadowFadingDist(0, 8.03);
-    double nLoSShadowFading = nLoSshadowFadingDist(gen);
-
-    // N/A в таблице
-    //К-фактор = N/A (заглушка) (K) 
-    double nLoSRiceanK = 0.0;
-
-    // разброс задержки (DS)
-    std::normal_distribution<> nLoSdelaySpreadDist(-7.34158, 0.115206);
-    double nLoSDelaySpread = std::abs(nLoSdelaySpreadDist(gen)); // Задержка распространения НЛОС
-
-    //Азимутальный угол Разброс вылета (ASD)
-    std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(1.62, 0.25);
-    double nLoSAzimuthSpreadDeparture = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
-    //Азимутальный угол Разброс прихода (ASA)
-    std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(1.69037, 0.07224);
-    double nLoSAzimuthSpreadArrival = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
-
-    //Зенитный угол Разброс прихода (ZSA)
-    double nLoSZenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.26024, 0.669941)), log10(52.0));
-
-    //Зенитный угол Разброс вылета (ZSD)
-    double nLoSZenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.08, 0.36)), log10(52.0));
-
-    return LargeScaleParameters(nLoSShadowFading, nLoSRiceanK, nLoSDelaySpread, nLoSAzimuthSpreadDeparture, nLoSAzimuthSpreadArrival, nLoSZenithSpreadDeparture, nLoSZenithSpreadArrival);
-};
-
 
 //___________________________________________________Класс_UT______________________________________________//
 class UserTerminal {
@@ -129,7 +128,6 @@ public:
     int id;
     double x, y, z; // Координаты пользователя 
     double wavelength; // Длина волны 
-    double d; // Параметры антенны 
     int numElementsX = 4; // 4 элемента антенны по X
     int numElementsY = 2; // 2 элемента антенны по Y 
     double bearingAngle; // Угол поворота 
@@ -140,42 +138,50 @@ public:
 
     UserTerminal(int id, double x, double y, double z, double lambda, double bearing, double downtilt, double slant)
         : id(id), x(x), y(y), z(z), wavelength(lambda), bearingAngle(bearing), downtiltAngle(downtilt), slantAngle(slant) {
-        d = lambda / 2.0; // Расстояние между элементами антенны 
     }
 
-    // Метод для вычисления ДН полей
-
-    double getFieldPatternTheta(double thetaAngle, double phiAngle) const {
+    // Методы для вычисления ДН полей
+    std::vector<double> FieldPattern(double thetaAngle, double phiAngle) const {
         thetaAngle = thetaAngle * 180 / M_PI;
         phiAngle = phiAngle * 180 / M_PI;
 
-        double ksi = +45.0 * 180 / M_PI;
-        double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
-        double f2_Phi = sqrt(std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0));
+        double ksi = 45.0 * M_PI / 180;
 
-        double cos_Pci = (cos(ksi) * sin(thetaAngle) + sin(ksi) * sin(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
-        double sin_Pci = (sin(ksi) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+        //Считалось ранее по модели 1 
+        //double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
+        //double f2_Phi = sqrt(std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0));
+        //double cos_Pci = (cos(ksi) * sin(thetaAngle) + sin(ksi) * sin(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+        //double sin_Pci = (sin(ksi) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+        //double f1_Theta = sin_Pci * f2_Theta + cos_Pci * f2_Phi;
+        //double f1_Phi = cos_Pci * f2_Theta - sin_Pci * f2_Phi;
 
-        double f1_Theta = sin_Pci * f2_Theta + cos_Pci * f2_Phi;
 
-        return std::abs(f1_Theta);
+        double AverticalPowerPattern = (-1) * std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0);
+        double AhorizontalPowerPattern = (-1) * std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0);
+        double A3D_PowerPattern = std::min((-1) * (AverticalPowerPattern + AhorizontalPowerPattern), 30.0);
+
+        double f1_Theta = sqrt(A3D_PowerPattern) * cos(ksi);
+        double f1_Phi = sqrt(A3D_PowerPattern) * sin(ksi);
+
+
+        return { f1_Theta , f1_Phi };
     }
 
-    double getFieldPatternPhi(double thetaAngle, double phiAngle) const {
-        thetaAngle = thetaAngle * 180 / M_PI;
-        phiAngle = phiAngle * 180 / M_PI;
 
-        double ksi = +45.0 * 180 / M_PI;
-        double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
-        double f2_Phi = sqrt(std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0));
 
-        double cos_Pci = (cos(ksi) * sin(thetaAngle) + sin(ksi) * sin(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
-        double sin_Pci = (sin(ksi) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
+    //Переход от ЛСК в ГСК 
+    std::vector<double> transformationFromLCSToGCS(double thetaAngle, double phiAngle, double downtiltAngle, double f1_Theta, double f1_Phi) const {
 
-        double f1_Phi = cos_Pci * f2_Theta - sin_Pci * f2_Phi;
+        double cos_Pci = (cos(downtiltAngle) * sin(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle)) * (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle))), 0.5));
+        double sin_Pci = (sin(downtiltAngle) * sin(phiAngle)) / (pow((1 - (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle)) * (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle))), 0.5));
 
-        return std::abs(f1_Phi);
+        double f_Theta = sin_Pci * f1_Theta + cos_Pci * f1_Phi;
+        double f_Phi = cos_Pci * f1_Theta - sin_Pci * f1_Phi;
+        return { f_Theta , f_Phi };
     }
+
+
+
 
     void calculateLOSAngles(const UserTerminal& transmitter, const UserTerminal& receiver,
         double& losPhiAOD, double& losThetaZOD,
@@ -223,11 +229,14 @@ double calculateDistance(const UserTerminal& a, const UserTerminal& b) {
 //________________________________Генерация_SSP(Small_Scale_Parameters)____________________________________//
 //______________________________delay_distribution_proportionality_factor__________________________________//
 //_______________________________Задаю_один_раз,_нужны_в_STEP_5_и_STEP_6___________________________________//
-double los_r_tau = 3.6; 
+double los_r_tau = 3.6;
 double nlos_r_tau = 3.0;
 
-std::vector<double> generateClusterDelays(double losdelaySpread, double nlosdelaySpread, double riceanK)
+std::vector<double> generateClusterDelays(bool los, double losdelaySpread, double nlosdelaySpread, double riceanK)
 {
+    losdelaySpread = pow(10, losdelaySpread);
+    nlosdelaySpread = pow(10, nlosdelaySpread);
+
     std::random_device rn;
     std::mt19937 gen(rn());
 
@@ -236,13 +245,7 @@ std::vector<double> generateClusterDelays(double losdelaySpread, double nlosdela
     double delay_tau_n;
     delays_tau.clear();
 
-    //Подброс монетки, LOS или NLOS
-    std::random_device(rd);
-    std::default_random_engine re(rd());
-    std::uniform_int_distribution<int>dist(0, 1);
-    int k = dist(re);
-
-    if (k == 0) {
+    if (los) {
         for (int n = 0; n < 15; ++n)
         {
             double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
@@ -259,8 +262,6 @@ std::vector<double> generateClusterDelays(double losdelaySpread, double nlosdela
         }
 
     }
-
-
 
     // Нормализация задержек
     double minDelay_tau_n = *std::min_element(delays_tau.begin(), delays_tau.end());
@@ -288,9 +289,10 @@ std::vector<double> generateClusterDelays(double losdelaySpread, double nlosdela
 
 //_______________________________________________STEP_6____________________________________________________//
 //__________________________________Генерация мощностей кластеров__________________________________________//
-std::vector<double> generateClusterPowers(const std::vector<double>& clusterDelays, double riceanK, double losdelaySpread, double nlosdelaySpread)
+std::vector<double> generateClusterPowers(bool los, const std::vector<double>& clusterDelays, double riceanK, double delaySpread)
 {
-
+    delaySpread = pow(10, delaySpread);
+    delaySpread = pow(10, delaySpread);
     riceanK = pow(10, riceanK / 10); // перевод из дб в линейный масштаб
 
     std::vector<double> clusterPowers(clusterDelays.size());
@@ -305,48 +307,54 @@ std::vector<double> generateClusterPowers(const std::vector<double>& clusterDela
 
     for (size_t n = 0; n < clusterDelays.size(); ++n) {
 
-        if (clusterDelays.size() == 15) {
+        if (los) {
             std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp((-1) * clusterDelays[n] * (los_r_tau - 1) / (los_r_tau * losdelaySpread)) * pow(10, (shadowing / 10));
+            power = exp((-1) * clusterDelays[n] * (los_r_tau - 1) / (los_r_tau * delaySpread)) * pow(10, (shadowing / 10));
+
         }
         else {
             std::normal_distribution<> shadowFadingDist(0, 9); // is the per cluster shadowing term in [dB] NLOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp((-1) * clusterDelays[n] * (nlos_r_tau - 1) / (nlos_r_tau * nlosdelaySpread)) * pow(10, (shadowing / 10));
+            power = exp((-1) * clusterDelays[n] * (nlos_r_tau - 1) / (nlos_r_tau * delaySpread)) * pow(10, (shadowing / 10));
         }
 
-        if (n == 0) { // Если LOS, добавляем дополнительный компонент
-            losPower = (riceanK / (riceanK + 1));
-        }
+
 
         clusterPowers[n] = power;
     }
+
 
     // Нормализация мощностей кластеров
     maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
     for (auto& n : clusterPowers) sumclusterPowers += n;
 
-    for (size_t n = 0; n < clusterPowers.size(); ++n) {
-        clusterPowers[n] = (1 / (riceanK + 1)) * clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности
-        if (n == 0) { // Если LOS, добавляем дополнительный компонент
-            clusterPowers[n] += losPower;
+    if (los) {
+        for (size_t n = 0; n < clusterPowers.size(); ++n) {
+            clusterPowers[n] = (1 / (riceanK + 1)) * clusterPowers[n] / sumclusterPowers;
+        }
+        clusterPowers.insert(clusterPowers.begin(), (riceanK / (riceanK + 1)));
+    }
+    else
+    {
+        for (size_t n = 0; n < clusterPowers.size(); ++n) {
+            clusterPowers[n] = clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
         }
     }
 
+
     std::vector<double> clusterPowers_main;
 
-    double threshold = maxPower / sumclusterPowers * 0.003; // Порог для удаления
+    double threshold = maxPower / sumclusterPowers * 0.00316; // Порог для удаления
     for (size_t n = 0; n < clusterPowers.size(); ++n) {
-        if (clusterPowers[n] > threshold) 
-        { 
-            clusterPowers_main.emplace_back(clusterPowers[n]); 
+        if (clusterPowers[n] > threshold)
+        {
+            clusterPowers_main.emplace_back(clusterPowers[n]);
         }
     }
 
     return clusterPowers_main; // Возвращаем нормализованные мощности кластеров
 };
-
 
 //________________________________________________STEP_7___________________________________________________//
 //____________________________Cluster_ASA_,_ASD_,_ZSA_in_[deg]_for_los_and_nlos____________________________//
@@ -366,228 +374,371 @@ std::vector<double> am = { 0.0447, -0.0447 ,0.1413 ,-0.1413,0.2492 ,-0.2492 ,0.3
 
 
 //__________________________________________________AOA____________________________________________________//
-MatrixXd generatePhiAOA(const std::vector<double>& clusterPowers_main, double losAzimuthSpreadArrival, double nlosAzimuthSpreadArrival, double riceanK, double losPhiAOA, int delays_size, int powers_size) {
-
+MatrixXd generatePhiAOA(bool los, const std::vector<double>& clusterPowers_main, double AzimuthSpreadArrival, double riceanK, double losPhiAOA)
+{
+    AzimuthSpreadArrival = pow(10, AzimuthSpreadArrival);
     std::random_device rd;
     std::mt19937 gen(rd());
-
-
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    std::vector<double> Phi_n_AOA(clusterPowers_main.size());
-    MatrixXd Phi_n_m_AOA(powers_size, 20);
-
     //n - должен быть размер кластера задержек
 
     double X1;
     double Y1;
     double Phi_1_AOA;
+    if (los)
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Phi_n_AOA(clusterPowers_main.size() + 1);
+        MatrixXd Phi_n_m_AOA(clusterPowers_main.size() + 1, 20);
 
-    for (int n = 0; n < powers_size; n++) {
+        for (int n = 0; n <= clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
-        double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+            if (n == 0)
+            {
+                // Заполняем первую строку отдельно
+                Phi_n_m_AOA(0, 0) = losPhiAOA;
+                continue;
+                /*for (int m = 1; m < 20; ++m) {
+                    Phi_n_m_AOA(0, m) = 0;
+                }
+                continue;*/  // Переходим к следующей итерации для `n = 1`
+            }
 
-        if (delays_size == 19) {
+            // Расчет для n > 0
             double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
-            Phi_n_AOA[n] = (2 * (losAzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-            double Yn = generateNormalRandom(0, (losAzimuthSpreadArrival / 7) * (losAzimuthSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+            Phi_n_AOA[n - 1] = (2 * (AzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi;
+            double Yn = generateNormalRandom(0, (AzimuthSpreadArrival / 7) * (AzimuthSpreadArrival / 7), gen);
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOA = Phi_n_AOA[n]; }
+            // Сохраняем начальные значения для первой строки
+            if (n == 1)
+            {
+                X1 = Xn;
+                Y1 = Yn;
+                Phi_1_AOA = Phi_n_AOA[0];
+            }
 
-            Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA - Phi_1_AOA * X1 - Y1;
+            // Вычисляем значение Phi_n_AOD для строки n с учетом начальных значений
+            double adjusted_Phi_n_AOA = Phi_n_AOA[n - 1] * Xn + Yn + losPhiAOA - Phi_1_AOA * X1 - Y1;
 
-
-            for (int m = 0; m < 20; ++m) {
-                Phi_n_m_AOA(n, m) = Phi_n_AOA[n] + los_C_ASA * am[m];
+            for (int m = 0; m < 20; ++m)
+            {
+                Phi_n_m_AOA(n, m) = adjusted_Phi_n_AOA + los_C_ASA * am[m];
             }
         }
-        else {
-            double C_phi = 1.273;
-            Phi_n_AOA[n] = (2 * (nlosAzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-            double Yn = generateNormalRandom(0, (nlosAzimuthSpreadArrival / 7) * (nlosAzimuthSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+        return Phi_n_m_AOA;
+    }
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOA = Phi_n_AOA[n]; }
+    else
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Phi_n_AOA(clusterPowers_main.size());
+        MatrixXd Phi_n_m_AOA(clusterPowers_main.size(), 20);
+        for (int n = 0; n < clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+            double C_phi = 1.273;
+            Phi_n_AOA[n] = (2 * (AzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
+            double Yn = generateNormalRandom(0, (AzimuthSpreadArrival / 7) * (AzimuthSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
             Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA;
 
-            for (int m = 0; m < 20; ++m) {
+            for (int m = 0; m < 20; ++m)
+            {
                 Phi_n_m_AOA(n, m) = Phi_n_AOA[n] + nlos_C_ASA * am[m];
             }
         }
+        return Phi_n_m_AOA;
     }
 
-    return Phi_n_m_AOA;
+
 }
 
-
 //__________________________________________________AOD____________________________________________________//
-MatrixXd generatePhiAOD(const std::vector<double>& clusterPowers_main, double losAzimuthSpreadDeparture, double nlosAzimuthSpreadDeparture, double riceanK, double losPhiAOD, int delays_size, int powers_size) {
-
+MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPowers_main, double AzimuthSpreadDeparture, double riceanK, double losPhiAOD)
+{
+    AzimuthSpreadDeparture = pow(10, AzimuthSpreadDeparture);
     std::random_device rd;
     std::mt19937 gen(rd());
-
-
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    std::vector<double> Phi_n_AOD(clusterPowers_main.size());
-    MatrixXd Phi_n_m_AOD(powers_size, 20);
-
 
     double X1;
     double Y1;
     double Phi_1_AOD;
 
+    if (los)
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Phi_n_AOD(clusterPowers_main.size() + 1);
+        MatrixXd Phi_n_m_AOD(clusterPowers_main.size() + 1, 20);
 
-    for (int n = 0; n < powers_size; n++) {
+        for (int n = 0; n <= clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
-        double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
-        if (delays_size == 19) {
+            if (n == 0)
+            {
+                // Заполняем первую строку отдельно
+                Phi_n_m_AOD(0, 0) = losPhiAOD;
+                for (int m = 1; m < 20; ++m) {
+                    Phi_n_m_AOD(0, m) = 0;
+                }
+                continue;  // Переходим к следующей итерации для `n = 1`
+            }
+
+            // Расчет для n > 0
             double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
-            Phi_n_AOD[n] = (2 * (losAzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
-            double Yn = generateNormalRandom(0, (losAzimuthSpreadDeparture / 7) * (losAzimuthSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+            Phi_n_AOD[n - 1] = (2 * (AzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi;
+            double Yn = generateNormalRandom(0, (AzimuthSpreadDeparture / 7) * (AzimuthSpreadDeparture / 7), gen);
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOD = Phi_n_AOD[n]; }
+            // Сохраняем начальные значения для первой строки
+            if (n == 1)
+            {
+                X1 = Xn;
+                Y1 = Yn;
+                Phi_1_AOD = Phi_n_AOD[0];
+            }
 
-            Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD - Phi_1_AOD * X1 - Y1;
+            // Вычисляем значение Phi_n_AOD для строки n с учетом начальных значений
+            double adjusted_Phi_n_AOD = Phi_n_AOD[n - 1] * Xn + Yn + losPhiAOD - Phi_1_AOD * X1 - Y1;
 
-
-            for (int m = 0; m < 20; ++m) {
-                Phi_n_m_AOD(n, m) = Phi_n_AOD[n] + los_C_ASD * am[m];
+            for (int m = 0; m < 20; ++m)
+            {
+                Phi_n_m_AOD(n, m) = adjusted_Phi_n_AOD + los_C_ASD * am[m];
             }
         }
-        else {
-            double C_phi = 1.273;
-            Phi_n_AOD[n] = (2 * (nlosAzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
-            double Yn = generateNormalRandom(0, (nlosAzimuthSpreadDeparture / 7) * (nlosAzimuthSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+        return Phi_n_m_AOD;
+    }
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Phi_1_AOD = Phi_n_AOD[n]; }
+    else
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Phi_n_AOD(clusterPowers_main.size());
+        MatrixXd Phi_n_m_AOD(clusterPowers_main.size(), 20);
+
+        for (int n = 0; n < clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+            double C_phi = 1.273;
+            Phi_n_AOD[n] = (2 * (AzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
+            double Yn = generateNormalRandom(0, (AzimuthSpreadDeparture / 7) * (AzimuthSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
             Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD;
 
-
-            for (int m = 0; m < 20; ++m) {
+            for (int m = 0; m < 20; ++m)
+            {
                 Phi_n_m_AOD(n, m) = Phi_n_AOD[n] + nlos_C_ASD * am[m];
             }
         }
+        return Phi_n_m_AOD;
+
     }
 
-    return Phi_n_m_AOD;
+
 }
 
-
 //__________________________________________________ZOA____________________________________________________//
-MatrixXd generateThetaZOA(const std::vector<double>& clusterPowers_main, double losZenithSpreadArrival, double nlosZenithSpreadArrival, double riceanK, double losThetaZOA, int delays_size, int powers_size) {
-
+MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadArrival, double riceanK, double losThetaZOA)
+{
+    ZenithSpreadArrival = pow(10, ZenithSpreadArrival);
     std::random_device rd;
     std::mt19937 gen(rd());
-
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    std::vector<double> Theta_n_ZOA(clusterPowers_main.size());
-    MatrixXd Theta_n_m_ZOA(powers_size, 20);
-
 
     double X1;
     double Y1;
     double Theta_1_ZOA;
 
-    for (int n = 0; n < powers_size; n++) {
+    if (los)
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Theta_n_ZOA(clusterPowers_main.size() + 1);
+        MatrixXd Theta_n_m_ZOA(clusterPowers_main.size() + 1, 20);
+
+        for (int n = 0; n <= clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
 
-        double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
-
-        if (delays_size == 15) {
-            double C_theta = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
-            Theta_n_ZOA[n] = ((-1) * losZenithSpreadArrival * (clusterPowers_main[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
-            double Yn = generateNormalRandom(0, (losZenithSpreadArrival / 7) * (losZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
-
-            if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOA = Theta_n_ZOA[n]; }
-
-            Theta_n_ZOA[n] = Theta_n_ZOA[n] * Xn + Yn + losThetaZOA - Theta_1_ZOA * X1 - Y1;
-
-
-            for (int m = 0; m < 20; ++m) {
-                Theta_n_m_ZOA(n, m) = Theta_n_ZOA[n] + los_C_ZSA * am[m];
+            if (n == 0)
+            {
+                // Заполняем первую строку отдельно
+                Theta_n_m_ZOA(0, 0) = losThetaZOA;
+                for (int m = 1; m < 20; ++m) {
+                    Theta_n_m_ZOA(0, m) = 0;
+                }
+                continue;  // Переходим к следующей итерации для `n = 1`
             }
 
-        }
-        else {
-            double C_theta = 1.184;
-            Theta_n_ZOA[n] = ((-1) * nlosZenithSpreadArrival * (clusterPowers_main[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
-            double Yn = generateNormalRandom(0, (nlosZenithSpreadArrival / 7) * (nlosZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+            // Расчет для n > 0
+            double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+            Theta_n_ZOA[n - 1] = (2 * (ZenithSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi;
+            double Yn = generateNormalRandom(0, (ZenithSpreadArrival / 7) * (ZenithSpreadArrival / 7), gen);
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOA = Theta_n_ZOA[n]; }
+            // Сохраняем начальные значения для первой строки
+            if (n == 1)
+            {
+                X1 = Xn;
+                Y1 = Yn;
+                Theta_1_ZOA = Theta_n_ZOA[0];
+            }
+
+            // Вычисляем значение Phi_n_AOD для строки n с учетом начальных значений
+            double adjusted_Theta_n_ZOA = Theta_n_ZOA[n - 1] * Xn + Yn + losThetaZOA - Theta_1_ZOA * X1 - Y1;
+
+            for (int m = 0; m < 20; ++m)
+            {
+                Theta_n_m_ZOA(n, m) = adjusted_Theta_n_ZOA + los_C_ZSA * am[m];
+            }
+        }
+        return Theta_n_m_ZOA;
+    }
+
+    else
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Theta_n_ZOA(clusterPowers_main.size());
+        MatrixXd Theta_n_m_ZOA(clusterPowers_main.size(), 20);
+
+        for (int n = 0; n < clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+            double C_phi = 1.273;
+            Theta_n_ZOA[n] = (2 * (ZenithSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
+            double Yn = generateNormalRandom(0, (ZenithSpreadArrival / 7) * (ZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
             Theta_n_ZOA[n] = Theta_n_ZOA[n] * Xn + Yn + losThetaZOA;
 
-            for (int m = 0; m < 20; ++m) {
+            for (int m = 0; m < 20; ++m)
+            {
                 Theta_n_m_ZOA(n, m) = Theta_n_ZOA[n] + nlos_C_ZSA * am[m];
             }
         }
+        return Theta_n_m_ZOA;
     }
-    return Theta_n_m_ZOA;
+
 }
 
 
 //__________________________________________________ZOD____________________________________________________//
-MatrixXd generateThetaZOD(const std::vector<double>& clusterPowers_main, double losZenithSpreadDeparture, double nlosZenithSpreadDeparture, double riceanK, double losThetaZOD, int delays_size, int powers_size) {
-
+MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadDeparture, double riceanK, double losThetaZOD)
+{
+    ZenithSpreadDeparture = pow(10, ZenithSpreadDeparture);
     std::random_device rd;
     std::mt19937 gen(rd());
-
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    std::vector<double> Theta_n_ZOD(clusterPowers_main.size());
-    MatrixXd Theta_n_m_ZOD(powers_size, 20);
 
     double X1;
     double Y1;
     double Theta_1_ZOD;
 
-    for (int n = 0; n < powers_size; n++) {
+    if (los)
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Theta_n_ZOD(clusterPowers_main.size() + 1);
+        MatrixXd Theta_n_m_ZOD(clusterPowers_main.size() + 1, 20);
 
-        double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+        for (int n = 0; n <= clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
-        if (delays_size < 15) {
-            double C_theta = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
-            Theta_n_ZOD[n] = ((-1) * losZenithSpreadDeparture * (clusterPowers_main[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
-            double Yn = generateNormalRandom(0, (losZenithSpreadDeparture / 7) * (losZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+            if (n == 0)
+            {
+                // Заполняем первую строку отдельно
+                Theta_n_m_ZOD(0, 0) = losThetaZOD;
+                for (int m = 1; m < 20; ++m) {
+                    Theta_n_m_ZOD(0, m) = 0;
+                }
+                continue;  // Переходим к следующей итерации для `n = 1`
+            }
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOD = Theta_n_ZOD[n]; }
+            // Расчет для n > 0
+            double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+            Theta_n_ZOD[n - 1] = (2 * (ZenithSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi;
+            double Yn = generateNormalRandom(0, (ZenithSpreadDeparture / 7) * (ZenithSpreadDeparture / 7), gen);
 
+            // Сохраняем начальные значения для первой строки
+            if (n == 1)
+            {
+                X1 = Xn;
+                Y1 = Yn;
+                Theta_1_ZOD = Theta_n_ZOD[0];
+            }
 
-            Theta_n_ZOD[n] = Theta_n_ZOD[n] * Xn + Yn + losThetaZOD - Theta_1_ZOD * X1 - Y1;
+            // Вычисляем значение Phi_n_AOD для строки n с учетом начальных значений
+            double adjusted_Theta_n_ZOD = Theta_n_ZOD[n - 1] * Xn + Yn + losThetaZOD - Theta_1_ZOD * X1 - Y1;
 
-            for (int m = 0; m < 20; ++m) {
-                Theta_n_m_ZOD(n, m) = Theta_n_ZOD[n] + los_C_ZSD * am[m];
+            for (int m = 0; m < 20; ++m)
+            {
+                Theta_n_m_ZOD(n, m) = adjusted_Theta_n_ZOD + los_C_ZSD * am[m];
             }
         }
-        else {
-            double C_theta = 1.184;
-            Theta_n_ZOD[n] = ((-1) * nlosZenithSpreadDeparture * (clusterPowers_main[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
-            double Yn = generateNormalRandom(0, (nlosZenithSpreadDeparture / 7) * (nlosZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+        return Theta_n_m_ZOD;
+    }
 
-            if (n == 0) { X1 = Xn; Y1 = Yn; Theta_1_ZOD = Theta_n_ZOD[n]; }
+    else
+    {
+        double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+        std::vector<double> Theta_n_ZOD(clusterPowers_main.size());
+        MatrixXd Theta_n_m_ZOD(clusterPowers_main.size(), 20);
+
+        for (int n = 0; n < clusterPowers_main.size(); n++)
+        {
+            double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+            double C_phi = 1.273;
+            Theta_n_ZOD[n] = (2 * (ZenithSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
+            double Yn = generateNormalRandom(0, (ZenithSpreadDeparture / 7) * (ZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
             Theta_n_ZOD[n] = Theta_n_ZOD[n] * Xn + Yn + losThetaZOD;
 
-            for (int m = 0; m < 20; ++m) {
+            for (int m = 0; m < 20; ++m)
+            {
                 Theta_n_m_ZOD(n, m) = Theta_n_ZOD[n] + nlos_C_ZSD * am[m];
             }
         }
+        return Theta_n_m_ZOD;
     }
-    return Theta_n_m_ZOD;
 }
 
-//_________________________________________________________________________________________________________//
+//______________________________________________STEP_8_____________________________________________________//
+// Функция для перемешивания лучей ( путей ) в 4 углах для каждого кластера
+void randomCouplingRays(MatrixXd& matrix1, MatrixXd& matrix2,
+    MatrixXd& matrix3, MatrixXd& matrix4,
+    bool los) {
+
+    if (los) {
+        return;
+    }
+
+    std::vector<std::mt19937> gens = { std::mt19937(std::random_device()()), std::mt19937(std::random_device()()),
+                                       std::mt19937(std::random_device()()), std::mt19937(std::random_device()()) };
+
+    std::vector<Eigen::MatrixXd*> matrices = { &matrix1, &matrix2, &matrix3, &matrix4 };
+
+    for (size_t i = 1; i < matrices.size(); i++) {
+        for (int j = 0; j < matrices[i]->rows(); j++) {
+            std::vector<double> row(20); // Изменили размер вектора на 20 элементов
+            for (int k = 0; k < 20 && k < matrices[i]->cols(); ++k) {
+                row[k] = (*matrices[i])(j, k);
+            }
+            std::shuffle(row.begin(), row.begin() + 20, gens[i]); // Перемешиваем только первые 20 элементов
+            for (int k = 0; k < 20 && k < matrices[i]->cols(); ++k) {
+                (*matrices[i])(j, k) = row[k];
+            }
+        }
+    }
+}
 
 
 //______________________________________________STEP_9_____________________________________________________//
 //___________________________________Функция_для_генерации_матриц_поляризации______________________________//
-MatrixXd generateXPR(int numClusters) {
+MatrixXd generateXPR(bool los) {
+    int sizeClusters = 15;
+    if (!los) { sizeClusters = 19; }
 
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    MatrixXd XPR(numClusters, 20);
-    for (int n = 0; n < numClusters; ++n) {
+    MatrixXd XPR(sizeClusters, 20);
+    for (int n = 0; n < sizeClusters; ++n) {
         for (int m = 0; m < 20; ++m) {
             std::normal_distribution<> X_n_m_Dist(1.62, 0.25);
             XPR(n, m) = pow(10, (X_n_m_Dist(gen)) / 10);
@@ -599,16 +750,18 @@ MatrixXd generateXPR(int numClusters) {
 
 //______________________________________________STEP_10____________________________________________________//
 //_________________________________Функция_для_генерации_случайных_начальных_фаз___________________________//
-MatrixXd generateInitialRandomPhases(int numClusters, int numRay, const RicianChannel& ricianChannel)
+MatrixXd generateInitialRandomPhases(std::vector<double>& clusterPowers)
 {
+
+
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<double> phaseDist(-M_PI, M_PI); // Распределение фаз от -π до π
 
-    MatrixXd initialRandomPhases(numClusters, ricianChannel.numPaths * 4);
+    MatrixXd initialRandomPhases(clusterPowers.size(), 80);
 
-    for (int n = 0; n < numClusters; ++n) {
-        for (int m = 0; m < numRay; ++m) {
+    for (int n = 0; n < clusterPowers.size(); ++n) {
+        for (int m = 0; m < 20; ++m) {
             // Генерация случайных фаз для каждой комбинации поляризации
             initialRandomPhases(n, m * 4) = phaseDist(gen); // Theta - Theta
             initialRandomPhases(n, m * 4 + 1) = phaseDist(gen); // Theta - Phi
@@ -619,6 +772,16 @@ MatrixXd generateInitialRandomPhases(int numClusters, int numRay, const RicianCh
     return initialRandomPhases;
 };
 
+MatrixXd generateChannelCoefficients(bool los, std::vector<double>& clusterPowers, MatrixXd& AOD_n_m, MatrixXd& AOA_n_m, MatrixXd& ZOD_n_m, MatrixXd& ZOA_n_m, MatrixXd& XRP) {
+    MatrixXd сhannelCoefficients(clusterPowers.size(), 20);
+
+    for (int n = 0; n < clusterPowers.size(); ++n) {
+        for (int m = 0; m < 20; ++m) {
+
+        }
+    }
+    return сhannelCoefficients;
+}
 
 //____________________________________________Основная_Программа___________________________________________//
 int main() {
@@ -641,11 +804,29 @@ int main() {
     double userHeight = 1.0; // Высота пользователей 
 
     for (int i = 1; i <= 12; ++i) {
-        double bearing = (rand() % 360) * M_PI / 180.0; // Угол поворота 
+        //double bearing = (rand() % 360) * M_PI / 180.0; // Угол поворота 
+        double bearing = 0;
         double downtilt = (rand() % 90) * M_PI / 180.0; // Угол наклона
-        double slant = (rand() % 360) * M_PI / 180.0; // Угол наклона
+        double slant = 0;
+        //double slant = (rand() % 360) * M_PI / 180.0; // Угол наклона
 
-        users.emplace_back(i, xDist(gen), yDist(gen), userHeight, wavelength, bearing, downtilt, slant);
+        UserTerminal newUT(i, 0, 0, userHeight, wavelength, bearing, downtilt, slant);
+        bool isValidPosition = false;
+
+        while (!isValidPosition) {
+            newUT.x = xDist(gen);
+            newUT.y = yDist(gen);
+
+            // Проверяем расстояние до всех существующих пользователей
+            isValidPosition = true; // Предполагаем, что позиция валидна
+            for (const auto& user : users) {
+                if (calculateDistance(newUT, user) < 1.0) {
+                    isValidPosition = false; // Позиция невалидна
+                    break; // Выходим из цикла
+                }
+            }
+            users.push_back(newUT);
+        }
     }
 
 
@@ -669,24 +850,33 @@ int main() {
         const UserTerminal& transmitter = users[pair.first];
         const UserTerminal& receiver = users[pair.second];
 
-
+        std::cout << "// UT " << transmitter.id << " - UT " << receiver.id << " // " << std::endl << std::endl;
 
         // Расчёт лос угов и соовтетствующих значений ДН полей приёмника и передатчика
         double losPhiAOD, losThetaZOD, losPhiAOA, losThetaZOA;
         transmitter.calculateLOSAngles(transmitter, receiver, losPhiAOD, losThetaZOD, losPhiAOA, losThetaZOA);
 
-        std::cout << "LOS AOD ZOD: (" << losPhiAOD << ", " << losThetaZOD << "),\n"
-            << "LOS AOA ZOA: (" << losPhiAOA << ", " << losThetaZOA << ")\n\n";
+        std::cout << "LOS  ZOD, AOD: (" << losThetaZOD << ", " << losPhiAOD << "),\n"
+            << "LOS ZOA, AOA : (" << losThetaZOA << ", " << losPhiAOA << ")\n\n";
 
-        double F_tx_Theta = transmitter.getFieldPatternTheta(losThetaZOD, losPhiAOD);
-        double F_tx_Pfi = transmitter.getFieldPatternPhi(losThetaZOD, losPhiAOD);
-        std::cout << "F_tx_Theta(theta,pfi) : " << F_tx_Theta << "\n";
-        std::cout << "F_tx_Pfi(theta,pfi) : " << F_tx_Pfi << "\n";
+        std::vector<double> F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD);
+        std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] << std::endl;
+        std::vector<double> txAntennaPattern = transmitter.transformationFromLCSToGCS(losThetaZOD, losPhiAOD, transmitter.downtiltAngle, F_tx[0], F_tx[1]);
+        std::cout << "Bearing Angle for transmitter  = " << transmitter.downtiltAngle << " rad" << std::endl;
+        std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << txAntennaPattern[0] << " ; " << txAntennaPattern[1] << " }" << std::endl << std::endl;
 
-        double F_rx_Theta = receiver.getFieldPatternTheta(losThetaZOD, losPhiAOD);
-        double F_rx_Pfi = receiver.getFieldPatternPhi(losThetaZOA, losPhiAOA);
-        std::cout << "F_rx_Theta(theta,pfi) : " << F_rx_Theta << "\n";
-        std::cout << "F_rx_Pfi(theta,pfi) : " << F_rx_Pfi << "\n";
+
+
+
+        std::vector<double> F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA);
+        std::cout << "{F_rx_theta,F_rx_pfi} : " << F_rx[0] << " ; " << F_rx[1] << " \n";
+        std::vector<double> rxAntennaPattern = receiver.transformationFromLCSToGCS(losThetaZOD, losPhiAOD, receiver.downtiltAngle, F_tx[0], F_tx[1]);
+        std::cout << "Bearing Angle for receiver  = " << receiver.downtiltAngle << " rad" << std::endl;
+        std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << rxAntennaPattern[0] << " ; " << rxAntennaPattern[1] << " }" << std::endl << std::endl;
+
+
+
+
 
         //________________________________STEP_2___________________________________________________________//
 
@@ -695,14 +885,31 @@ int main() {
         std::cout << "Distance between transmitter and receiver is " << d << std::endl;
 
         double P_LOS;
-        if (d <= 5)
+        bool los;
+        if (d <= 5) {
             P_LOS = 1;
-        else if (d > 5 && d <= 49)
+            los = true;
+            std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
+        }
+        else if (d > 5 && d <= 49) {
             P_LOS = exp(-(d - 5) / 70.8);
-        else
+            los = true;
+            std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
+        }
+        else {
             P_LOS = exp(-(d - 49) / 211.7) * 0.54;
+            if (P_LOS < 0.5) {
+                los = false;
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - NLOS" << std::endl;
+            }
+            else {
+                los = true;
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
+            }
+        }
 
-        std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << std::endl << std::endl;
+
+
 
         //_________________________________________________STEP_3__________________________________________//
         // Вычисление Pathloss_LOS для каждой пары
@@ -712,30 +919,15 @@ int main() {
 
         std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss_LOS << std::endl << std::endl;
 
-
-        //Конструктор_для_LSP_LOS
-        LargeScaleParameters LSP_for_LOS = GenerateLargeScaleParametersForLOS();
-
-
-        //Конструктор_для_LSP_NLOS
-        LargeScaleParameters LSP_for_NLOS = GenerateLargeScaleParametersForNLOS();
-
-
-        // Вывод LSP параметров для LOS
-        std::cout << "\nLSP for LOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n"
-            << "SF: " << LSP_for_LOS.shadowFading << ",\nK: " << LSP_for_LOS.riceanK
-            << ",\nDS: " << LSP_for_LOS.delaySpread << ",\nASA: " << LSP_for_LOS.azimuthSpreadArrival << ",\nASD: " << LSP_for_LOS.azimuthSpreadDeparture << ",\nZSA: " << LSP_for_LOS.zenithSpreadArrival << ",\nZSD: " << LSP_for_LOS.zenithSpreadDeparture << std::endl << std::endl;
-
-
-        // Вывод LSP параметров для NLOS
-        std::cout << "\nLSP for NLOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n"
-            << "SF: " << LSP_for_NLOS.shadowFading << ",\nK: " << LSP_for_NLOS.riceanK
-            << ",\nDS: " << LSP_for_NLOS.delaySpread << ",\nASA: " << LSP_for_NLOS.azimuthSpreadArrival << ",\nASD: " << LSP_for_NLOS.azimuthSpreadDeparture << ",\nZSA: " << LSP_for_NLOS.zenithSpreadArrival << ",\nZSD: " << LSP_for_NLOS.zenithSpreadDeparture << std::endl << std::endl;
+        //_________________________________________________STEP_4__________________________________________//
+        std::cout << "\nLSP for LOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n";
+        LargeScaleParameters lsp(los);
+        lsp.showParameters();
 
 
         //______________STEP_5_______________//
         // Генерация задержек кластеров
-        std::vector<double> clusterDelays = generateClusterDelays(LSP_for_LOS.delaySpread, LSP_for_NLOS.delaySpread, LSP_for_LOS.riceanK); // Передаем delaySpread из LSP
+        std::vector<double> clusterDelays = generateClusterDelays(los, lsp.delaySpread, lsp.delaySpread, lsp.riceanK); // Передаем delaySpread из LSP
         int d_size = clusterDelays.size(); // Размер вектора задержек
         std::cout << "Cluster delays for User " << transmitter.id << " and User " << receiver.id << ":\n\n";
         int i = 1;
@@ -748,7 +940,7 @@ int main() {
 
         //_____________STEP_6_______________//
         // Генерация мощностей кластеров
-        std::vector<double> clusterPowers = generateClusterPowers(clusterDelays, LSP_for_LOS.riceanK, LSP_for_LOS.delaySpread, LSP_for_NLOS.delaySpread);
+        std::vector<double> clusterPowers = generateClusterPowers(los, clusterDelays, lsp.riceanK, lsp.delaySpread);
         int p_size = clusterPowers.size(); // Размер вектора мощностей
         std::cout << "Cluster powers for User " << transmitter.id << " and User " << receiver.id << ": ";
         for (const auto& power : clusterPowers) {
@@ -758,73 +950,305 @@ int main() {
 
 
         //_____________STEP_7_______________//
-        //AOA
-        MatrixXd PhiAOA = generatePhiAOA(clusterPowers, LSP_for_LOS.azimuthSpreadArrival, LSP_for_NLOS.azimuthSpreadArrival, LSP_for_LOS.riceanK, losPhiAOA, d_size, p_size);
-        std::cout << "PhiAOA for UT receiver " << receiver.id << ": \n";
-        // Вывод значений матрицы построчно
-        for (int i = 0; i < PhiAOA.rows(); ++i) {
-            for (int j = 0; j < PhiAOA.cols(); ++j) {
-                std::cout << PhiAOA(i, j) << " "; // Вывод элемента
-            }
-            std::cout << std::endl; // Переход на новую строку после вывода всех элементов строки
-        }
-        std::cout << std::endl;
 
         //AOD
-        MatrixXd PhiAOD = generatePhiAOD(clusterPowers, LSP_for_LOS.azimuthSpreadDeparture, LSP_for_NLOS.azimuthSpreadDeparture, LSP_for_LOS.riceanK, losPhiAOD, d_size, p_size);
+        MatrixXd PhiAOD = generatePhiAOD(los, clusterPowers, lsp.azimuthSpreadDeparture, lsp.riceanK, losPhiAOD);
         std::cout << "PhiAOD for UT transmitter " << transmitter.id << ": \n";
-        // Вывод значений матрицы построчно
-        for (int i = 0; i < PhiAOD.rows(); ++i) {
-            for (int j = 0; j < PhiAOD.cols(); ++j) {
-                std::cout << PhiAOD(i, j) << " "; // Вывод элемента
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << PhiAOD(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << PhiAOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
             }
-            std::cout << std::endl; // Переход на новую строку после вывода всех элементов строки
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << PhiAOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
         }
         std::cout << std::endl;
 
-        //ZOA
-        MatrixXd ThetaZOA = generateThetaZOA(clusterPowers, LSP_for_LOS.zenithSpreadArrival, LSP_for_NLOS.azimuthSpreadArrival, LSP_for_LOS.riceanK, losThetaZOA, d_size, p_size);
-        std::cout << "ThetaZOA for UT receiver " << receiver.id << ": \n";
-        // Вывод значений матрицы построчно
-        for (int i = 0; i < ThetaZOA.rows(); ++i) {
-            for (int j = 0; j < ThetaZOA.cols(); ++j) {
-                std::cout << ThetaZOA(i, j) << " "; // Вывод элемента
+
+        //AOA
+        MatrixXd PhiAOA = generatePhiAOA(los, clusterPowers, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA);
+        std::cout << "PhiAOA for UT receiver " << receiver.id << ": \n";
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << PhiAOA(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << PhiAOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
             }
-            std::cout << std::endl; // Переход на новую строку после вывода всех элементов строки
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << PhiAOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
         }
         std::cout << std::endl;
 
         //ZOD
-        MatrixXd ThetaZOD = generateThetaZOD(clusterPowers, LSP_for_LOS.zenithSpreadDeparture, LSP_for_NLOS.azimuthSpreadDeparture, LSP_for_LOS.riceanK, losThetaZOD, d_size, p_size);
+        MatrixXd ThetaZOD = generateThetaZOD(los, clusterPowers, lsp.zenithSpreadDeparture, lsp.riceanK, losThetaZOD);
         std::cout << "ThetaZOD for UT transmitter " << transmitter.id << ": \n";
-        // Вывод значений матрицы построчно
-        for (int i = 0; i < ThetaZOD.rows(); ++i) {
-            for (int j = 0; j < ThetaZOD.cols(); ++j) {
-                std::cout << ThetaZOD(i, j) << " "; // Вывод элемента
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << ThetaZOD(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << ThetaZOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
             }
-            std::cout << std::endl; // Переход на новую строку после вывода всех элементов строки
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << ThetaZOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
         }
         std::cout << std::endl;
 
+        //ZOA
+        MatrixXd ThetaZOA = generateThetaZOA(los, clusterPowers, lsp.zenithSpreadArrival, lsp.riceanK, losThetaZOA);
+        std::cout << "ThetaZOA for UT receiver " << receiver.id << ": \n";
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << ThetaZOA(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << ThetaZOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << ThetaZOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+        std::cout << std::endl;
+
+        //________________________________STEP_8___________________________________________________//
+        std::cout << "Coupling of rays within a cluster for both azimuth and elevation " << std::endl;
+
+        randomCouplingRays(PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, los);
+
+        std::cout << "PhiAOD:\n";
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << PhiAOD(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << PhiAOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << PhiAOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+        std::cout << std::endl;
+
+        std::cout << "PhiAOA:\n";
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << PhiAOA(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << PhiAOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << PhiAOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+        std::cout << std::endl;
+
+        std::cout << "ThetaZOD:\n";
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << ThetaZOD(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << ThetaZOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << ThetaZOD(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+        std::cout << std::endl;
+
+        std::cout << "ThetaZOA:\n";
+        if (los)
+        {
+            for (int n = 0; n <= clusterPowers.size(); n++)
+            {
+                if (n == 0)
+                {
+                    std::cout << ThetaZOA(n, 0) << std::endl << std::endl;
+                    continue;
+                }
+
+                for (int m = 1; m < 20; m++)
+                {
+                    std::cout << ThetaZOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
+        else
+        {
+            for (int n = 0; n < clusterPowers.size(); n++)
+            {
+                for (int m = 0; m < 20; m++)
+                {
+                    std::cout << ThetaZOA(n, m) << " ";
+                }
+                std::cout << std::endl;
+                std::cout << std::endl;
+            }
+        }
+        std::cout << std::endl;
 
         //_____________STEP_9_______________//
 
         //XPR
-        MatrixXd XPR = generateXPR(clusterDelays.size());
+        MatrixXd XPR = generateXPR(los);
         std::cout << "Generate the cross polarization power ratios  K_n_m: \n";
-        for (int i = 0; i < XPR.rows(); ++i) {
-            for (int j = 0; j < XPR.cols(); ++j) {
-                std::cout << XPR(i, j) << " "; // Вывод элемента
-            }
-            std::cout << std::endl; // Переход на новую строку после вывода всех элементов строки
-        }
-        std::cout << std::endl;
+        std::cout << XPR << std::endl << std::endl;
 
         //_____________STEP_10_______________//
-        MatrixXd initialPhases = generateInitialRandomPhases(clusterDelays.size(), 20, channel);
+        MatrixXd initialPhases = generateInitialRandomPhases(clusterPowers);
 
         std::cout << "Initial random phases for each ray in each cluster:" << std::endl;
-        for (int n = 0; n < clusterDelays.size(); ++n) {
+        for (int n = 0; n < clusterPowers.size(); ++n) {
             std::cout << "Cluster " << n + 1 << ": \n";
             for (int m = 0; m < 20; ++m) {
                 std::cout << "Ray " << m + 1 << " (Theta - Theta, Theta - Phi, Phi - Theta, Phi - Phi): | "
@@ -835,7 +1259,6 @@ int main() {
             }
             std::cout << std::endl;
         }
-    }
-
+    };
     return 0;
 }
