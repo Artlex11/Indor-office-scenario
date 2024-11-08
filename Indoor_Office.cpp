@@ -13,6 +13,7 @@ using namespace Eigen;
 
 //_______________________________________Функция_распределения_Лапласа_____________________________________//
 double laplaceDistribution(double x, double mu, double b) {
+    b /= sqrt(2);
     if (b == 0) {
         throw std::invalid_argument("Parameter b must be non-zero.");
     }
@@ -45,7 +46,7 @@ public:
     LargeScaleParameters() {};
 
     // Конструктор для лос
-    LargeScaleParameters(bool losvalue): los(losvalue){
+    LargeScaleParameters(bool losvalue) : los(losvalue) {
         std::random_device rd;
         std::mt19937 gen(rd());
 
@@ -57,7 +58,7 @@ public:
 
             //К-фактор (K)
             std::normal_distribution<> riceanKDist0(7, 4);
-            riceanK = std::abs(riceanKDist0(gen));
+            riceanK = (riceanKDist0(gen));
 
             // разброс задержки (DS)
             std::normal_distribution<> loSdelaySpreadDist(-7.69802, 0.18);
@@ -65,22 +66,22 @@ public:
 
             //Азимутальный угол Разброс вылета (ASD)
             std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, 0.18);
-            azimuthSpreadDeparture = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
             std::normal_distribution<> loSAzimuthSpreadArrivalDist(1.69037, 0.07224);
-            azimuthSpreadArrival = std::min(std::abs(loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent ZSD 
             //and ZOD offset parameters in Table 7.5 - 7 and 7.5 - 10
 
             //Зенитный угол Разброс прихода (ZSA)
-            zenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.22027, 0.230196)), log10(52.0));
+            zenithSpreadArrival = std::min((laplaceDistribution(generateNormalRandom(0, 1, gen), 1.22027, 0.230196)), log10(52.0));
 
             // Нет в таблице 7.5-6
             //Зенитный угол Разброс вылета (ZSD)
-            zenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.01951, 0.409863)), log10(52.0));
+            zenithSpreadDeparture = std::min((laplaceDistribution(generateNormalRandom(0, 1, gen), 1.01951, 0.409863)), log10(52.0));
         }
         else {
             //Если нлос:
@@ -95,29 +96,29 @@ public:
 
             //Азимутальный угол Разброс вылета (ASD)
             std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(1.62, 0.25);
-            azimuthSpreadDeparture = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            azimuthSpreadDeparture = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
             std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(1.69037, 0.07224);
-            azimuthSpreadArrival = std::min(std::abs(nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            azimuthSpreadArrival = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //Зенитный угол Разброс прихода (ZSA)
-            zenithSpreadArrival = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.26024, 0.669941)), log10(52.0));
+            zenithSpreadArrival = std::min((laplaceDistribution(generateNormalRandom(0, 1, gen), 1.26024, 0.669941)), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
-            zenithSpreadDeparture = std::min(std::abs(laplaceDistribution(generateNormalRandom(0, 1, gen), 1.08, 0.36)), log10(52.0));
-        }    
+            zenithSpreadDeparture = std::min((laplaceDistribution(generateNormalRandom(0, 1, gen), 1.08, 0.36)), log10(52.0));
+        }
     };
 
     void showParameters() {
         if (los) {
             // Вывод LSP параметров для NLOS
-            std::cout << "SF: " << shadowFading << ",\nK: " << riceanK << ",\nDS: " << delaySpread << ",\nASA: " << azimuthSpreadArrival << ",\nASD: " << azimuthSpreadDeparture << ",\nZSA: " << zenithSpreadArrival << ",\nZSD: " << zenithSpreadDeparture << std::endl << std::endl;
+            std::cout << "SF [dB] : " << shadowFading << ",\nK [dB] : " << riceanK << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASA [log10(ASA/ 1* degree] :  " << azimuthSpreadArrival << ",\nASD [log10(ASA/ 1* degree] : " << azimuthSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << std::endl << std::endl;
         }
         else {
             // Вывод LSP параметров для NLOS
-            std::cout << "SF: " << shadowFading << ",\nDS: " << delaySpread << ",\nASA: " << azimuthSpreadArrival << ",\nASD: " << azimuthSpreadDeparture << ",\nZSA: " << zenithSpreadArrival << ",\nZSD: " << zenithSpreadDeparture << std::endl << std::endl;
+            std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << std::endl << std::endl;
         }
     }
 };
@@ -137,7 +138,7 @@ public:
     // Конструктор класса
 
     UserTerminal(int id, double x, double y, double z, double lambda, double bearing, double downtilt, double slant)
-        : id(id), x(x), y(y), z(z), wavelength(lambda), bearingAngle(bearing), downtiltAngle(downtilt), slantAngle(slant) { 
+        : id(id), x(x), y(y), z(z), wavelength(lambda), bearingAngle(bearing), downtiltAngle(downtilt), slantAngle(slant) {
     }
 
     // Методы для вычисления ДН полей
@@ -159,24 +160,24 @@ public:
 
         double AverticalPowerPattern = (-1) * std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0);
         double AhorizontalPowerPattern = (-1) * std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0);
-        double A3D_PowerPattern =  std::min( (-1) * ( AverticalPowerPattern + AhorizontalPowerPattern ), 30.0);
+        double A3D_PowerPattern = std::min((-1) * (AverticalPowerPattern + AhorizontalPowerPattern), 30.0);
 
-        double f1_Theta =  sqrt( A3D_PowerPattern ) * cos( ksi );
-        double f1_Phi =  sqrt( A3D_PowerPattern ) * sin( ksi );
+        double f1_Theta = sqrt(A3D_PowerPattern) * cos(ksi);
+        double f1_Phi = sqrt(A3D_PowerPattern) * sin(ksi);
 
         fieldPattern << f1_Theta, f1_Phi;
 
         return fieldPattern;
     }
 
-    
+
 
     //Переход от ЛСК в ГСК 
     Vector2d transformationFromLCSToGCS(double thetaAngle, double phiAngle, double downtiltAngle, Vector2d& fieldPattern) const {
         Vector2d transformFieldPattern;
         double cos_Pci = (cos(downtiltAngle) * sin(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle)) * (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle))), 0.5));
         double sin_Pci = (sin(downtiltAngle) * sin(phiAngle)) / (pow((1 - (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle)) * (cos(downtiltAngle) * cos(thetaAngle) - sin(downtiltAngle) * cos(phiAngle) * sin(thetaAngle))), 0.5));
-    
+
         double f_Theta = sin_Pci * fieldPattern(0) + cos_Pci * fieldPattern(1);
         double f_Phi = cos_Pci * fieldPattern(0) - sin_Pci * fieldPattern(1);
 
@@ -315,7 +316,7 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
             std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
             power = exp((-1) * clusterDelays[n] * (los_r_tau - 1) / (los_r_tau * delaySpread)) * pow(10, (shadowing / 10));
-            
+
         }
         else {
             std::normal_distribution<> shadowFadingDist(0, 9); // is the per cluster shadowing term in [dB] NLOS.
@@ -323,7 +324,7 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
             power = exp((-1) * clusterDelays[n] * (nlos_r_tau - 1) / (nlos_r_tau * delaySpread)) * pow(10, (shadowing / 10));
         }
 
-        
+
 
         clusterPowers[n] = power;
     }
@@ -335,17 +336,17 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
 
     if (los) {
         for (size_t n = 0; n < clusterPowers.size(); ++n) {
-            clusterPowers[n] = (1 / (riceanK + 1)) * clusterPowers[n] / sumclusterPowers;   
+            clusterPowers[n] = (1 / (riceanK + 1)) * clusterPowers[n] / sumclusterPowers;
         }
-        clusterPowers.insert(clusterPowers.begin(), (riceanK /(riceanK + 1)));
+        clusterPowers.insert(clusterPowers.begin(), (riceanK / (riceanK + 1)));
     }
     else
     {
         for (size_t n = 0; n < clusterPowers.size(); ++n) {
-            clusterPowers[n] =  clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
+            clusterPowers[n] = clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
         }
     }
-    
+
 
     std::vector<double> clusterPowers_main;
 
@@ -357,8 +358,14 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
         }
     }
 
+    std::sort(clusterPowers_main.begin(), clusterPowers_main.end(), std::greater<double>());
+    
+
     return clusterPowers_main; // Возвращаем нормализованные мощности кластеров
 };
+
+
+
 
 //________________________________________________STEP_7___________________________________________________//
 //____________________________Cluster_ASA_,_ASD_,_ZSA_in_[deg]_for_los_and_nlos____________________________//
@@ -378,7 +385,7 @@ std::vector<double> am = { 0.0447, -0.0447 ,0.1413 ,-0.1413,0.2492 ,-0.2492 ,0.3
 
 
 //__________________________________________________AOA____________________________________________________//
-MatrixXd generatePhiAOA( bool los, const std::vector<double>& clusterPowers_main, double AzimuthSpreadArrival, double riceanK, double losPhiAOA) {
+MatrixXd generatePhiAOA(bool los, const std::vector<double>& clusterPowers_main, double AzimuthSpreadArrival, double riceanK, double losPhiAOA) {
     AzimuthSpreadArrival = pow(10, AzimuthSpreadArrival);
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -403,10 +410,10 @@ MatrixXd generatePhiAOA( bool los, const std::vector<double>& clusterPowers_main
             Phi_n_AOA[n] = (2 * (AzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
             double Yn = generateNormalRandom(0, (AzimuthSpreadArrival / 7) * (AzimuthSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
-            if (n == 0) { 
+            if (n == 0) {
                 X1 = Xn; Y1 = Yn; Phi_1_AOA = Phi_n_AOA[n];
-                Phi_n_m_AOA(n, 0) = losPhiAOA ;
-                
+                Phi_n_m_AOA(n, 0) = losPhiAOA;
+
             }
             else {
 
@@ -461,7 +468,7 @@ MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPowers_main,
             Phi_n_AOD[n] = (2 * (AzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9)
             double Yn = generateNormalRandom(0, (AzimuthSpreadDeparture / 7) * (AzimuthSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
-            if (n == 0) { 
+            if (n == 0) {
                 X1 = Xn; Y1 = Yn; Phi_1_AOD = Phi_n_AOD[n];
                 Phi_n_m_AOD(n, 0) = losPhiAOD;
             }
@@ -472,7 +479,7 @@ MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPowers_main,
                     Phi_n_m_AOD(n, m) = Phi_n_AOD[n] + los_C_ASD * am[m];
                 }
             }
-            
+
         }
         else {
             double C_phi = 1.273;
@@ -493,7 +500,7 @@ MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPowers_main,
 
 
 //__________________________________________________ZOA____________________________________________________//
-MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadArrival,  double riceanK, double losThetaZOA) {
+MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadArrival, double riceanK, double losThetaZOA) {
 
     ZenithSpreadArrival = pow(10, ZenithSpreadArrival);
     std::random_device rd;
@@ -518,8 +525,8 @@ MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_mai
             Theta_n_ZOA[n] = ((-1) * ZenithSpreadArrival * (clusterPowers_main[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
             double Yn = generateNormalRandom(0, (ZenithSpreadArrival / 7) * (ZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
-            if (n == 0) { 
-                X1 = Xn; Y1 = Yn; Theta_1_ZOA = Theta_n_ZOA[n]; 
+            if (n == 0) {
+                X1 = Xn; Y1 = Yn; Theta_1_ZOA = Theta_n_ZOA[n];
                 Theta_n_m_ZOA(n, 0) = losThetaZOA;
             }
             else {
@@ -529,7 +536,7 @@ MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_mai
                     Theta_n_m_ZOA(n, m) = Theta_n_ZOA[n] + los_C_ZSA * am[m];
                 }
             }
-            
+
 
         }
         else {
@@ -549,7 +556,7 @@ MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_mai
 
 
 //__________________________________________________ZOD____________________________________________________//
-MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPowers_main,  double ZenithSpreadDeparture, double riceanK, double losThetaZOD) {
+MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadDeparture, double riceanK, double losThetaZOD) {
 
     ZenithSpreadDeparture = pow(10, ZenithSpreadDeparture);
     std::random_device rd;
@@ -567,13 +574,13 @@ MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPowers_mai
 
         double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
 
-        if (los ) {
+        if (los) {
             double C_theta = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) + (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
             Theta_n_ZOD[n] = ((-1) * ZenithSpreadDeparture * (clusterPowers_main[n] / maxPower)) / C_theta; // Применение уравнения (7.5-9)
             double Yn = generateNormalRandom(0, (ZenithSpreadDeparture / 7) * (ZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
 
-            if (n == 0) { 
-                X1 = Xn; Y1 = Yn; Theta_1_ZOD = Theta_n_ZOD[n]; 
+            if (n == 0) {
+                X1 = Xn; Y1 = Yn; Theta_1_ZOD = Theta_n_ZOD[n];
                 Theta_n_m_ZOD(n, 0) = losThetaZOD;
             }
             else {
@@ -600,27 +607,96 @@ MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPowers_mai
 }
 
 //______________________________________________STEP_8_____________________________________________________//
-// Функция для перемешивания лучей ( путей ) в 4 углах для каждого кластера
+// Функция для перемешивания лучей (путей) в 4 углах для каждого кластера
 void randomCouplingRays(MatrixXd& matrix1, MatrixXd& matrix2,
     MatrixXd& matrix3, MatrixXd& matrix4,
     bool los) {
-
-    if (los) {
-        return;
-    }
-
-    std::vector<std::mt19937> gens = { std::mt19937(std::random_device()()), std::mt19937(std::random_device()()),
-                                       std::mt19937(std::random_device()()), std::mt19937(std::random_device()()) };
-
+    std::vector<std::mt19937> gens = {
+        std::mt19937(std::random_device()()),
+        std::mt19937(std::random_device()()),
+        std::mt19937(std::random_device()()),
+        std::mt19937(std::random_device()())
+    };
     std::vector<Eigen::MatrixXd*> matrices = { &matrix1, &matrix2, &matrix3, &matrix4 };
+
+    //индексы для суб-кластеров
+    std::vector<int> category1 = { 0, 1, 2, 3, 4, 5, 6, 7, 18, 19 }; // 1й суб-кластер
+    std::vector<int> category2 = { 8, 9, 10, 11, 16, 17 }; // 2й суб-кластер
+    std::vector<int> category3 = { 12, 13, 14, 15 }; // 3й суб-кластер
 
     for (size_t i = 0; i < matrices.size(); ++i) {
         for (int j = 0; j < matrices[i]->rows(); ++j) {
-            std::vector<double> row(20); // Изменили размер вектора на 20 элементов
+            std::vector<double> row(20); // Размер вектора на 20 элементов
             for (int k = 0; k < 20 && k < matrices[i]->cols(); ++k) {
                 row[k] = (*matrices[i])(j, k);
             }
-            std::shuffle(row.begin(), row.begin() + 20, gens[i]); // Перемешиваем только первые 20 элементов
+            if (los) {
+                // Если los == true
+                if (j == 0) {
+                    // Первая строка не изменяется
+                    continue;
+                }
+                else if (j == 1 || j == 2) {
+                    // Перемешиваем элементы из каждого суб-кластера
+                    std::vector<double> selectedElements1, selectedElements2, selectedElements3;
+                    for (int index : category1) {
+                        selectedElements1.push_back(row[index]);
+                    }
+                    for (int index : category2) {
+                        selectedElements2.push_back(row[index]);
+                    }
+                    for (int index : category3) {
+                        selectedElements3.push_back(row[index]);
+                    }
+                    // Перемешиваем каждый субкластер
+                    std::shuffle(selectedElements1.begin(), selectedElements1.end(), gens[i]);
+                    std::shuffle(selectedElements2.begin(), selectedElements2.end(), gens[i]);
+                    std::shuffle(selectedElements3.begin(), selectedElements3.end(), gens[i]);
+                    // Записываем перемешанные элементы обратно в строку
+                    for (size_t k = 0; k < selectedElements1.size(); ++k) {
+                        row[category1[k]] = selectedElements1[k];
+                    }
+                    for (size_t k = 0; k < selectedElements2.size(); ++k) {
+                        row[category2[k]] = selectedElements2[k];
+                    }
+                    for (size_t k = 0; k < selectedElements3.size(); ++k) {
+                        row[category3[k]] = selectedElements3[k];
+                    }
+                }
+            }
+            else {
+                // Если los == false
+                if (j == 0 || j == 1) {
+                    std::vector<double> selectedElements1, selectedElements2, selectedElements3;
+                    for (int index : category1) {
+                        selectedElements1.push_back(row[index]);
+                    }
+                    for (int index : category2) {
+                        selectedElements2.push_back(row[index]);
+                    }
+                    for (int index : category3) {
+                        selectedElements3.push_back(row[index]);
+                    }
+                    // Перемешиваем каждую подкатегорию
+                    std::shuffle(selectedElements1.begin(), selectedElements1.end(), gens[i]);
+                    std::shuffle(selectedElements2.begin(), selectedElements2.end(), gens[i]);
+                    std::shuffle(selectedElements3.begin(), selectedElements3.end(), gens[i]);
+                    // Записываем перемешанные элементы обратно в строку
+                    for (size_t k = 0; k < selectedElements1.size(); ++k) {
+                        row[category1[k]] = selectedElements1[k];
+                    }
+                    for (size_t k = 0; k < selectedElements2.size(); ++k) {
+                        row[category2[k]] = selectedElements2[k];
+                    }
+                    for (size_t k = 0; k < selectedElements3.size(); ++k) {
+                        row[category3[k]] = selectedElements3[k];
+                    }
+                }
+            }
+            // Перемешиваем оставшиеся строки (начиная с 3-й строки, если los == true, и с 4-й, если los == false)
+            if (j >= (los ? 3 : 2)) {
+                std::shuffle(row.begin(), row.begin() + 20, gens[i]); // Перемешиваем только первые 20 элементов
+            }
             for (int k = 0; k < 20 && k < matrices[i]->cols(); ++k) {
                 (*matrices[i])(j, k) = row[k];
             }
@@ -631,17 +707,22 @@ void randomCouplingRays(MatrixXd& matrix1, MatrixXd& matrix2,
 
 //______________________________________________STEP_9_____________________________________________________//
 //___________________________________Функция_для_генерации_матриц_поляризации______________________________//
-MatrixXd generateXPR(const std::vector<double>& clusterPowers) {
-    
+MatrixXd generateXPR(bool los, const std::vector<double>& clusterPowers) {
+
 
     std::random_device rd;
     std::mt19937 gen(rd());
 
     MatrixXd XPR(clusterPowers.size(), 20);
+    double mean_Xn = 10;
+
+    if (los) { mean_Xn = 11; }
+
     for (int n = 0; n < clusterPowers.size(); ++n) {
         for (int m = 0; m < 20; ++m) {
-            std::normal_distribution<> X_n_m_Dist(1.62, 0.25);
-            XPR(n, m) = pow(10, (X_n_m_Dist(gen)) / 10);
+            
+             std::normal_distribution<> X_n_m_Dist(mean_Xn, 16);
+             XPR(n, m) = pow(10, (X_n_m_Dist(gen)) / 10);
         }
     }
     return XPR;
@@ -652,7 +733,7 @@ MatrixXd generateXPR(const std::vector<double>& clusterPowers) {
 //_________________________________Функция_для_генерации_случайных_начальных_фаз___________________________//
 MatrixXd generateInitialRandomPhases(std::vector<double>& clusterPowers)
 {
-    
+
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -681,62 +762,238 @@ VectorXcd generateChannelCoefficients(bool los, const UserTerminal& transmitter,
     phiAOA_n_m = phiAOA_n_m * M_PI / 180;
     thetaZOD_n_m = thetaZOD_n_m * M_PI / 180;
     thetaZOA_n_m = thetaZOA_n_m * M_PI / 180;
-    std::complex<double> j(0.0, 1.0); 
+
+
+    std::complex<double> j(0.0, 1.0);
 
     VectorXcd channelCoefficients(clusterPowers.size());
     channelCoefficients.setZero();
 
 
-    
+
 
     for (int n = 0; n < clusterPowers.size(); ++n) {
         for (int m = 0; m < 20; ++m) {
-            Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
-            Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+            if (los) {
+                if (n == 0) {
 
-            Vector2d F_tx = transmitter.transformationFromLCSToGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.downtiltAngle, F1_tx);
-            Vector2d F_rx = receiver.transformationFromLCSToGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.downtiltAngle, F1_rx);
+                    Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
+                    Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
 
-            Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
-                sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
-                cos(thetaZOD_n_m(n, m)));
-            Vector3d sphericalUnitVector_rx(sin(thetaZOA_n_m(n, m)) * cos(phiAOA_n_m(n, m)),
-                sin(thetaZOA_n_m(n, m)) * sin(phiAOA_n_m(n, m)),
-                cos(thetaZOA_n_m(n, m)));
+                    Vector2d F_tx = transmitter.transformationFromLCSToGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.downtiltAngle, F1_tx);
+                    Vector2d F_rx = receiver.transformationFromLCSToGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.downtiltAngle, F1_rx);
 
-            Vector3d locationVector_tx(transmitter.x, transmitter.y, transmitter.z);
-            Vector3d locationVector_rx(receiver.x, receiver.y, receiver.z);
+                    Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
+                        sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
+                        cos(thetaZOD_n_m(n, m)));
+                    Vector3d sphericalUnitVector_rx(sin(thetaZOA_n_m(n, m)) * cos(phiAOA_n_m(n, m)),
+                        sin(thetaZOA_n_m(n, m)) * sin(phiAOA_n_m(n, m)),
+                        cos(thetaZOA_n_m(n, m)));
 
-            
-            Matrix2cd XPR_and_InitialRandomPhases;
-            XPR_and_InitialRandomPhases <<
-                exp(j * initialPhases(n, m * 4)),
-                sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
-                sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
-                exp(j * initialPhases(n, m * 4 + 3));
+                    Vector3d locationVector_tx(transmitter.x, transmitter.y, transmitter.z);
+                    Vector3d locationVector_rx(receiver.x, receiver.y, receiver.z);
 
-            double tx = sphericalUnitVector_tx.transpose() * locationVector_tx;
-            double rx = sphericalUnitVector_rx.transpose() * locationVector_rx;
-           
-            
-            // Разделение сложной операции на более простые
-            auto temp1 = F_rx.transpose() * XPR_and_InitialRandomPhases; // Промежуточный результат
-            auto temp2 = temp1 * F_tx; // Продолжение операции
 
-            // Вместо сложной операции, используя std::complex<double>
-            std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
-            std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
-            std::complex<double> channelCoefficients_n = temp2(0,0) * exp_factor_rx * exp_factor_tx; // Теперь это комплексное число
+                    Matrix2cd XPR_and_InitialRandomPhases;
+                    XPR_and_InitialRandomPhases << 1, 0 , 0 , -1;
 
-            channelCoefficients(n) += channelCoefficients_n; // Суммирование
-            std::cout << "exp(rx)" << m << " " << exp(2 * M_PI * rx / 0.1) << " |\n";
-            std::cout << "exo(tx)" << m << " " << exp(2 * M_PI * tx / 0.1) << " |\n";
-            std::cout << "channelCoefficients_n_m" << m <<" "<< temp2 << " |\n";
+                    double tx = sphericalUnitVector_tx.transpose() * locationVector_tx;
+                    double rx = sphericalUnitVector_rx.transpose() * locationVector_rx;
+
+
+                    // Разделение сложной операции на более простые
+                    auto temp1 = F_rx.transpose() * XPR_and_InitialRandomPhases; // Промежуточный результат
+                    auto temp2 = temp1 * F_tx; // Продолжение операции
+
+                    // Вместо сложной операции, используя std::complex<double>
+                    std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
+                    std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                    std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx; 
+
+                    channelCoefficients(n) += channelCoefficients_n; 
+
+                }
+                //учёт саб-кластеров
+                else if( n == 1 || n == 2){
+
+                    Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
+                    Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+
+                    Vector2d F_tx = transmitter.transformationFromLCSToGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.downtiltAngle, F1_tx);
+                    Vector2d F_rx = receiver.transformationFromLCSToGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.downtiltAngle, F1_rx);
+
+                    Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
+                        sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
+                        cos(thetaZOD_n_m(n, m)));
+                    Vector3d sphericalUnitVector_rx(sin(thetaZOA_n_m(n, m)) * cos(phiAOA_n_m(n, m)),
+                        sin(thetaZOA_n_m(n, m)) * sin(phiAOA_n_m(n, m)),
+                        cos(thetaZOA_n_m(n, m)));
+
+                    Vector3d locationVector_tx(transmitter.x, transmitter.y, transmitter.z);
+                    Vector3d locationVector_rx(receiver.x, receiver.y, receiver.z);
+
+
+                    Matrix2cd XPR_and_InitialRandomPhases;
+                    XPR_and_InitialRandomPhases <<
+                        exp(j * initialPhases(n, m * 4)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
+                        exp(j * initialPhases(n, m * 4 + 3));
+
+                    double tx = sphericalUnitVector_tx.transpose() * locationVector_tx;
+                    double rx = sphericalUnitVector_rx.transpose() * locationVector_rx;
+
+
+                    // Разделение сложной операции на более простые
+                    auto temp1 = F_rx.transpose() * XPR_and_InitialRandomPhases; // Промежуточный результат
+                    auto temp2 = temp1 * F_tx; // Продолжение операции
+
+                    // Вместо сложной операции, используя std::complex<double>
+                    std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
+                    std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                    std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx; 
+
+                    channelCoefficients(n) += channelCoefficients_n; 
+                }
+                else {
+                    Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
+                    Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+
+                    Vector2d F_tx = transmitter.transformationFromLCSToGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.downtiltAngle, F1_tx);
+                    Vector2d F_rx = receiver.transformationFromLCSToGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.downtiltAngle, F1_rx);
+
+                    Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
+                        sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
+                        cos(thetaZOD_n_m(n, m)));
+                    Vector3d sphericalUnitVector_rx(sin(thetaZOA_n_m(n, m)) * cos(phiAOA_n_m(n, m)),
+                        sin(thetaZOA_n_m(n, m)) * sin(phiAOA_n_m(n, m)),
+                        cos(thetaZOA_n_m(n, m)));
+
+                    Vector3d locationVector_tx(transmitter.x, transmitter.y, transmitter.z);
+                    Vector3d locationVector_rx(receiver.x, receiver.y, receiver.z);
+
+
+                    Matrix2cd XPR_and_InitialRandomPhases;
+                    XPR_and_InitialRandomPhases <<
+                        exp(j * initialPhases(n, m * 4)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
+                        exp(j * initialPhases(n, m * 4 + 3));
+
+                    double tx = sphericalUnitVector_tx.transpose() * locationVector_tx;
+                    double rx = sphericalUnitVector_rx.transpose() * locationVector_rx;
+
+
+                    // Разделение сложной операции на более простые
+                    auto temp1 = F_rx.transpose() * XPR_and_InitialRandomPhases; // Промежуточный результат
+                    auto temp2 = temp1 * F_tx; // Продолжение операции
+
+                    // Вместо сложной операции, используя std::complex<double>
+                    std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
+                    std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                    std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
+
+                    channelCoefficients(n) += channelCoefficients_n;
+                }
+            }
+            else {
+                // Учёт саб-кластеров
+                if (n == 0 || n == 1) {
+
+                    Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
+                    Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+
+                    Vector2d F_tx = transmitter.transformationFromLCSToGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.downtiltAngle, F1_tx);
+                    Vector2d F_rx = receiver.transformationFromLCSToGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.downtiltAngle, F1_rx);
+
+                    Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
+                        sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
+                        cos(thetaZOD_n_m(n, m)));
+                    Vector3d sphericalUnitVector_rx(sin(thetaZOA_n_m(n, m)) * cos(phiAOA_n_m(n, m)),
+                        sin(thetaZOA_n_m(n, m)) * sin(phiAOA_n_m(n, m)),
+                        cos(thetaZOA_n_m(n, m)));
+
+                    Vector3d locationVector_tx(transmitter.x, transmitter.y, transmitter.z);
+                    Vector3d locationVector_rx(receiver.x, receiver.y, receiver.z);
+
+
+                    Matrix2cd XPR_and_InitialRandomPhases;
+                    XPR_and_InitialRandomPhases <<
+                        exp(j * initialPhases(n, m * 4)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
+                        exp(j * initialPhases(n, m * 4 + 3));
+
+                    double tx = sphericalUnitVector_tx.transpose() * locationVector_tx;
+                    double rx = sphericalUnitVector_rx.transpose() * locationVector_rx;
+
+
+                    // Разделение сложной операции на более простые
+                    auto temp1 = F_rx.transpose() * XPR_and_InitialRandomPhases; // Промежуточный результат
+                    auto temp2 = temp1 * F_tx; // Продолжение операции
+
+                    // Вместо сложной операции, используя std::complex<double>
+                    std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
+                    std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                    std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
+
+                    channelCoefficients(n) += channelCoefficients_n;
+                }
+                else {
+                    Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
+                    Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+
+                    Vector2d F_tx = transmitter.transformationFromLCSToGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.downtiltAngle, F1_tx);
+                    Vector2d F_rx = receiver.transformationFromLCSToGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.downtiltAngle, F1_rx);
+
+                    Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
+                        sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
+                        cos(thetaZOD_n_m(n, m)));
+                    Vector3d sphericalUnitVector_rx(sin(thetaZOA_n_m(n, m)) * cos(phiAOA_n_m(n, m)),
+                        sin(thetaZOA_n_m(n, m)) * sin(phiAOA_n_m(n, m)),
+                        cos(thetaZOA_n_m(n, m)));
+
+                    Vector3d locationVector_tx(transmitter.x, transmitter.y, transmitter.z);
+                    Vector3d locationVector_rx(receiver.x, receiver.y, receiver.z);
+
+
+                    Matrix2cd XPR_and_InitialRandomPhases;
+                    XPR_and_InitialRandomPhases <<
+                        exp(j * initialPhases(n, m * 4)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
+                        sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
+                        exp(j * initialPhases(n, m * 4 + 3));
+
+                    double tx = sphericalUnitVector_tx.transpose() * locationVector_tx;
+                    double rx = sphericalUnitVector_rx.transpose() * locationVector_rx;
+
+
+                    // Разделение сложной операции на более простые
+                    auto temp1 = F_rx.transpose() * XPR_and_InitialRandomPhases; // Промежуточный результат
+                    auto temp2 = temp1 * F_tx; // Продолжение операции
+
+                    // Вместо сложной операции, используя std::complex<double>
+                    std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
+                    std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                    std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
+
+                    channelCoefficients(n) += channelCoefficients_n;
+                }
+            }
             
         }
+        if(!los && n == 0 ){ continue;}
         channelCoefficients(n) *= pow(clusterPowers[n] / 20, 0.5);
     }
-    return channelCoefficients; 
+
+
+
+
+
+
+
+
+    return channelCoefficients;
 }
 
 //____________________________________________Основная_Программа___________________________________________//
@@ -806,7 +1063,7 @@ int main() {
         const UserTerminal& transmitter = users[pair.first];
         const UserTerminal& receiver = users[pair.second];
 
-        std::cout << "// UT "<< transmitter.id << " - UT " << receiver.id << " // " << std::endl << std::endl;
+        std::cout << "// UT " << transmitter.id << " - UT " << receiver.id << " // " << std::endl << std::endl;
 
         // Расчёт лос угов и соовтетствующих значений ДН полей приёмника и передатчика
         double losPhiAOD, losThetaZOD, losPhiAOA, losThetaZOA;
@@ -815,8 +1072,8 @@ int main() {
         std::cout << "LOS  ZOD, AOD: (" << losThetaZOD << ", " << losPhiAOD << "),\n"
             << "LOS ZOA, AOA : (" << losThetaZOA << ", " << losPhiAOA << ")\n\n";
 
-        Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD);       
-        std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] <<  std::endl;
+        Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD);
+        std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] << std::endl;
         Vector2d txAntennaPattern = transmitter.transformationFromLCSToGCS(losThetaZOD, losPhiAOD, transmitter.downtiltAngle, F_tx);
         std::cout << "Bearing Angle for transmitter  = " << transmitter.downtiltAngle << " rad" << std::endl;
         std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << txAntennaPattern[0] << " ; " << txAntennaPattern[1] << " }" << std::endl << std::endl;
@@ -831,7 +1088,7 @@ int main() {
         std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << rxAntennaPattern[0] << " ; " << rxAntennaPattern[1] << " }" << std::endl << std::endl;
 
 
-        
+
 
 
         //________________________________STEP_2___________________________________________________________//
@@ -854,17 +1111,17 @@ int main() {
         }
         else {
             P_LOS = exp(-(d - 49) / 211.7) * 0.54;
-            if (P_LOS < 0.5) { 
-                los = false; 
+            if (P_LOS < 0.5) {
+                los = false;
                 std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - NLOS" << std::endl;
             }
-            else{ 
+            else {
                 los = true;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl; 
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
             }
         }
 
-       
+
 
 
         //_________________________________________________STEP_3__________________________________________//
@@ -883,7 +1140,7 @@ int main() {
 
         //______________STEP_5_______________//
         // Генерация задержек кластеров
-        std::vector<double> clusterDelays = generateClusterDelays(los,lsp.delaySpread, lsp.delaySpread, lsp.riceanK); // Передаем delaySpread из LSP
+        std::vector<double> clusterDelays = generateClusterDelays(los, lsp.delaySpread, lsp.delaySpread, lsp.riceanK); // Передаем delaySpread из LSP
         int d_size = clusterDelays.size(); // Размер вектора задержек
         std::cout << "Cluster delays for User " << transmitter.id << " and User " << receiver.id << ":\n\n";
         int i = 1;
@@ -907,12 +1164,12 @@ int main() {
 
         //_____________STEP_7_______________//
 
-        
+
 
         //Generate arrival angles and departure angles for both azimuth and elevation
-        MatrixXd PhiAOD = generatePhiAOD(los, clusterPowers, lsp.azimuthSpreadDeparture,  lsp.riceanK, losPhiAOD);
-        MatrixXd PhiAOA = generatePhiAOA(los,clusterPowers, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA);
-        MatrixXd ThetaZOD = generateThetaZOD(los, clusterPowers, lsp.zenithSpreadDeparture,  lsp.riceanK, losThetaZOD);
+        MatrixXd PhiAOD = generatePhiAOD(los, clusterPowers, lsp.azimuthSpreadDeparture, lsp.riceanK, losPhiAOD);
+        MatrixXd PhiAOA = generatePhiAOA(los, clusterPowers, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA);
+        MatrixXd ThetaZOD = generateThetaZOD(los, clusterPowers, lsp.zenithSpreadDeparture, lsp.riceanK, losThetaZOD);
         MatrixXd ThetaZOA = generateThetaZOA(los, clusterPowers, lsp.zenithSpreadArrival, lsp.riceanK, losThetaZOA);
 
         if (los) {
@@ -967,7 +1224,7 @@ int main() {
         //_____________STEP_9_______________//
 
         //XPR
-        MatrixXd XPR = generateXPR(clusterPowers);
+        MatrixXd XPR = generateXPR(los , clusterPowers);
         std::cout << "Generate the cross polarization power ratios  K_n_m: \n";
         std::cout << XPR << std::endl << std::endl;
 
@@ -987,14 +1244,14 @@ int main() {
             std::cout << std::endl;
         }
 
-        if (!los) {
-            VectorXcd channelСoefficients = generateChannelCoefficients(los, transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
+        
+        VectorXcd channelСoefficients = generateChannelCoefficients(los, transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
 
-            std::cout << "channel coefficients for NLOS: \n" << channelСoefficients << " |\n";
- 
-        }
+        std::cout << "channel coefficients: \n" << channelСoefficients << " |\n";
+
         
-        
-    }  
+
+
+    }
     return 0;
 }
