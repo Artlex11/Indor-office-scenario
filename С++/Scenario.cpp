@@ -147,8 +147,6 @@ public:
             std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << std::endl << std::endl;
         }
     }
-
-
 };
 
 //__________________________________________________Класс_UT______________________________________________//
@@ -208,9 +206,7 @@ public:
 
         return fieldPattern;
     }
-
     // в fieldPattern - 1 theta, 2 phi
-
     //Переход от LSC в GSC 
     Eigen::Vector2d transformationFromLCStoGCS(double thetaAngle, double phiAngle, double bearingAngle, double downtiltAngle, double slantAngle, Eigen::Vector2d& fieldPattern) const 
     {
@@ -246,9 +242,7 @@ public:
         losThetaZOD = acos(-dz / distance); // Угловая координата 
         losPhiAOD = atan2(-dy, -dx);         // Азимутальная координата 
     }
-
     /*
-
                                 ^Z
                                 |
                 / (0)   / (1)   |   / (2)  / (3)
@@ -258,10 +252,7 @@ public:
                 \ (0)   \ (1)       \ (2)  \ (3)
 
                 \ (4)   \ (5)       \ (6)  \ (7)
-
-
     */
-
     Eigen::MatrixXd generateAntennaElements() const 
     {
         Eigen::MatrixXd locationMatrixAntennaElements(16, 3);
@@ -291,7 +282,6 @@ double calculateDistance(const UserTerminal& a, const UserTerminal& b)
 {
     return std::sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z));
 }
-
 
 //______________________________________________STEP_5_____________________________________________________//
 //________________________________Генерация_SSP(Small_Scale_Parameters)____________________________________//
@@ -384,7 +374,6 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
         }
         clusterPowers[n] = power;
     }
-
 
     // Нормализация мощностей кластеров
     maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
@@ -814,7 +803,6 @@ void randomCouplingRays(Eigen::MatrixXd& matrix1, Eigen::MatrixXd& matrix2,
 //___________________________________Функция_для_генерации_матриц_поляризации______________________________//
 Eigen::MatrixXd generateXPR(bool los, const std::vector<double>& clusterPowers) {
 
-
     std::random_device rd;
     std::mt19937 gen(rd());
 
@@ -1179,8 +1167,6 @@ int main() {
         }
     }
 
-    // Передача сигнала между пользователями 
-    std::complex<double> signal(1.0, 0.0); // Сигнал с амплитудой 1 и фазой 0
 
     for (const auto& pair : selectedPairs) {
         const UserTerminal& transmitter = users[pair.first];
@@ -1245,11 +1231,19 @@ int main() {
 
         //_________________________________________________STEP_3__________________________________________//
         // Вычисление Pathloss_LOS для каждой пары
-        double path_loss_LOS;
         double nu = 3; // частота в ГГц
-        path_loss_LOS = 32.4 + 17.3 * log10(d) + 20 * log10(nu);
-
-        std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss_LOS << std::endl << std::endl;
+        if (los)
+        {
+            double path_loss_LOS;
+            path_loss_LOS = 32.4 + 17.3 * log10(d) + 20 * log10(nu);
+            std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss_LOS << std::endl << std::endl;
+        }
+        else
+        {
+            double path_loss_NLOS;
+            path_loss_NLOS = 38.3 * log10(d) + 17.30 + 24.9 * log10(nu);
+                std::cout << "Pathloss in NLOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss_NLOS << std::endl << std::endl;
+        }
 
         //_________________________________________________STEP_4__________________________________________//
         std::cout << "\nLSP for LOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n";
