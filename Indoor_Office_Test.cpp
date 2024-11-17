@@ -102,43 +102,50 @@ public:
             std::normal_distribution<> loSAzimuthSpreadArrivalDist((-0.19 * log10(1 + fc) + 1.781), losStandardDeviationASA);
             azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
-            
+
             //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent
             //Зенитный угол Разброс прихода (ZSA)
             losStandardDeviationZSA = (-0.04 * log10(1 + fc) + 0.264);
-            std::normal_distribution<> loSZenithSpreadArrivalDist((-0.26 * log10(1 + fc) + 1.44), (-0.04 * log10(1 + fc) + 0.264));
+            std::normal_distribution<> loSZenithSpreadArrivalDist((-0.26 * log10(1 + fc) + 1.44), losStandardDeviationZSA);
             zenithSpreadArrival = std::min(loSZenithSpreadArrivalDist(gen), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
-            
+
             if (fc < 6.0) {
                 losStandardDeviationZSD = (0.13 * log10(1 + 6) + 0.30);
-                std::normal_distribution<> loSZenithSpreadDepartureDist((-1.43 * log10(1 + 6) + 2.228), (0.13 * log10(1 + 6) + 0.30));
+                std::normal_distribution<> loSZenithSpreadDepartureDist((-1.43 * log10(1 + 6) + 2.228), losStandardDeviationZSD);
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             else {
                 losStandardDeviationZSD = (0.13 * log10(1 + fc) + 0.30);
-                std::normal_distribution<> loSZenithSpreadDepartureDist((-1.43 * log10(1 + fc) + 2.228), (0.13 * log10(1 + fc) + 0.30));
+                std::normal_distribution<> loSZenithSpreadDepartureDist((-1.43 * log10(1 + fc) + 2.228), losStandardDeviationZSD);
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
+            z << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
+            std::cout << z << "\n";
 
-            z <<  shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
-            double dispersionSF = pow(10, 2 * 3 / 10);
-            double dispersionK = pow(10, 2 * 4 / 10);
-            double dispersionDS = pow(10, 2 * 0.18);
-            double dispersionASD = pow(10, 2 * 0.18);
-            double dispersionASA = pow(10, 2 * losStandardDeviationASA);
-            double dispersionZSD = pow(10, 2 * losStandardDeviationZSD);
-            double dispersionZSA = pow(10, 2 * losStandardDeviationZSA);
-            
+            //z << pow(10, shadowFading / 10) , pow(10, riceanK / 10), pow(10, delaySpread), pow(10, azimuthSpreadDeparture), pow(10, azimuthSpreadArrival), pow(10, zenithSpreadDeparture), pow(10, zenithSpreadArrival);
+            //std::cout << z<< "\n";
+
+            double dispersionSF = pow(10, 3 * 3 / 10);
+            double dispersionK = pow(10, 4 * 4 / 10);
+            double dispersionDS = pow(10, 0.18 * 0.18);
+            double dispersionASD = pow(10, 0.18 * 0.18);
+            double dispersionASA = pow(10, losStandardDeviationASA * losStandardDeviationASA);
+            double dispersionZSD = pow(10, losStandardDeviationZSD * losStandardDeviationZSD);
+            double dispersionZSA = pow(10, losStandardDeviationZSA * losStandardDeviationZSA);
+
             //SF K DS ASD ASA ZSD ZSA
-            C << dispersionSF , 0.5, -0.8, -0.4, -0.5, 0.2, 0.3,
-                0.5, dispersionK , -0.5, 0.0, 0.0, 0.0, 0.1,
-                -0.8, -0.5, dispersionDS , 0.6, 0.8, 0.1, 0.2,
-                -0.4, 0.0, 0.6, dispersionASD , 0.4, 0.5, 0.0,
-                -0.5, 0.0, 0.8, 0.4, dispersionASA, 0.0, 0.5,
-                0.2, 0.0, 0.1, 0.5, 0.0, dispersionZSD, 0.0,
-                0.3, 0.1, 0.2, 0.0, 0.5, 0.0, losStandardDeviationZSA;
+            C << 1, 0.5, -0.8, -0.4, -0.5, 0.2, 0.3,
+                0.5, 1, -0.5, 0.0, 0.0, 0.0, 0.1,
+                -0.8, -0.5, 1, 0.6, 0.8, 0.1, 0.2,
+                -0.4, 0.0, 0.6, 1, 0.4, 0.5, 0.0,
+                -0.5, 0.0, 0.8, 0.4, 1, 0.0, 0.5,
+                0.2, 0.0, 0.1, 0.5, 0.0, 1, 0.0,
+                0.3, 0.1, 0.2, 0.0, 0.5, 0.0, 1;
+
+
+
             std::cout << C << "\n";
 
             // Вычисление и проверка главных миноров
@@ -150,7 +157,7 @@ public:
                 double determinant = minor.determinant();
 
                 // Выводим значение и знак главного минора
-                std::cout  << i << "x" << i << ": " << determinant << std::endl;
+                std::cout << i << "x" << i << ": " << determinant << std::endl;
                 if (determinant > 0) {
                     std::cout << "+ " << std::endl;
                 }
@@ -161,22 +168,28 @@ public:
                     std::cout << "0 " << std::endl;
                 }
             }
+            MatrixXd L;
+            L = C.llt().matrixL();
+            std::cout << L << "\n";
 
-            C.llt().matrixL();
+            // Проверка на положительную определенность
+            if (C.llt().info() != Success) {
+                std::cerr << "Matrix C is not positive definite!" << std::endl;
+                return;
+            }
 
+            VectorXd z_new;
+            z_new = L * z;
 
-            
+            std::cout << z_new << "\n";
 
-            z = C * z ;
-
-            shadowFading = z(0);
-            riceanK = z(1);
-            delaySpread = z(2);
-            azimuthSpreadDeparture = z(3);
-            azimuthSpreadArrival = z(4);
-            zenithSpreadDeparture = z(5);
-            zenithSpreadArrival = z(6);
-
+            shadowFading = z_new(0);
+            riceanK = z_new(1);
+            delaySpread = z_new(2);
+            azimuthSpreadDeparture = z_new(3);
+            azimuthSpreadArrival = z_new(4);
+            zenithSpreadDeparture = z_new(5);
+            zenithSpreadArrival = z_new(6);
         }
         else
         {
@@ -246,13 +259,13 @@ public:
     {}
 
     // Методы для вычисления ДН полей //Vector2d - вектор столбцы с двумя координатами
-    Eigen::Vector2d FieldPattern(double thetaAngle, double phiAngle) const
+    Eigen::Vector2d FieldPattern(double thetaAngle, double phiAngle, double ksi) const
     {
         Eigen::Vector2d fieldPattern;
         thetaAngle = thetaAngle * 180 / M_PI;
         phiAngle = phiAngle * 180 / M_PI;
 
-        double ksi = 45.0 * M_PI / 180;
+        ksi = ksi * M_PI / 180;
 
         //Считалось ранее по модели 1 
         //double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
@@ -954,13 +967,19 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
     // пары U-S
     for (int n = 0; n < clusterPowers.size(); ++n) {
+        double ksi_rx;
+        double ksi_tx;
         int pair = 0;
         for (int u = 0; u < 16; ++u) {
+            if(u < 8){  ksi_rx = 45; }
+            else{  ksi_rx = -45; }
             for (int s = 0; s < 16; ++s) {
+                if (s < 8) {  ksi_tx = 45; }
+                else { ksi_tx = -45; }
                 for (int m = 0; m < 20; ++m) {
                     if (n > 1) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
-                        Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                         Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -995,8 +1014,8 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
                     }
                     else if (n < 2) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
-                        Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                         Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -1071,13 +1090,19 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
 
     // пары U-S
     for (int n = 0; n < clusterPowers.size(); ++n) {
+        double ksi_rx;
+        double ksi_tx;
         int pair = 0;
         for (int u = 0; u < 16; ++u) {
+            if (u < 8) { ksi_rx = 45; }
+            else { ksi_rx = -45; }
             for (int s = 0; s < 16; ++s) {
+                if (s < 8) { ksi_tx = 45; }
+                else { ksi_tx = -45; }
                 for (int m = 0; m < 20; ++m) {
                     if (n > 2) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
-                        Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m),ksi_rx);
 
                         Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                         Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -1111,8 +1136,8 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
                     }
                     else if (n > 0 && n < 3) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m));
-                        Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m));
+                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                         Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -1158,8 +1183,8 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                 }
 
                 if (n == 0) {
-                    Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0));
-                    Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0));
+                    Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0),0.0);
+                    Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0),0.0);
 
                     Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                     Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -1279,13 +1304,13 @@ int main() {
         std::cout << "LOS ZOD, AOD: (" << losThetaZOD << ", " << losPhiAOD << "),\n"
             << "LOS ZOA, AOA: (" << losThetaZOA << ", " << losPhiAOA << ")\n\n";
 
-        Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD);
+        Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD,0);
         std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] << std::endl;
         Eigen::Vector2d txAntennaPattern = transmitter.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F_tx);
         std::cout << "Bearing Angle for transmitter  = " << transmitter.downtiltAngle << " rad" << std::endl;
         std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << txAntennaPattern[0] << " ; " << txAntennaPattern[1] << " }" << std::endl << std::endl;
 
-        Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA);
+        Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA,0);
         std::cout << "{F_rx_theta,F_rx_pfi} : " << F_rx[0] << " ; " << F_rx[1] << " \n";
         Eigen::Vector2d rxAntennaPattern = receiver.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F_rx);
         std::cout << "Bearing Angle for receiver  = " << receiver.downtiltAngle << " rad" << std::endl;
@@ -1330,14 +1355,14 @@ int main() {
         //_________________________________________________STEP_3__________________________________________//
         // Вычисление Pathloss_LOS для каждой пары
         double path_loss_LOS;
-        double nu = 3; // частота в ГГц
+        double nu = 3.0; // частота в ГГц
         path_loss_LOS = 32.4 + 17.3 * log10(d) + 20 * log10(nu);
 
         std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss_LOS << std::endl << std::endl;
 
         //_________________________________________________STEP_4__________________________________________//
         std::cout << "\nLSP for LOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n";
-        LargeScaleParameters lsp(los, 3.0); //3ГГц
+        LargeScaleParameters lsp(los, nu); //3ГГц
         lsp.showParameters();
 
         //______________STEP_5_______________//
