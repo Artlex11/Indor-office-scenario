@@ -69,9 +69,16 @@ public:
         std::random_device rd;
         std::mt19937 gen(rd());
 
+
+
+        double losStandardDeviationSF;
+        double losStandardDeviationK;
+        double losStandardDeviationDS;
+        double losStandardDeviationASD;
         double losStandardDeviationASA;
         double losStandardDeviationZSA;
         double losStandardDeviationZSD;
+
         VectorXd z(7);
         MatrixXd C(7, 7);
 
@@ -79,22 +86,23 @@ public:
         {
             //Если LOS :
             //Затемнение SF
-
-            std::normal_distribution<> loSshadowFadingDist(0, 3);
+            losStandardDeviationSF = 3;
+            std::normal_distribution<> loSshadowFadingDist(0, losStandardDeviationSF);
             shadowFading = loSshadowFadingDist(gen);
 
             //К-фактор (K)
-
-            std::normal_distribution<> riceanKDist0(7, 4);
+            losStandardDeviationK = 4;
+            std::normal_distribution<> riceanKDist0(7, losStandardDeviationK);
             riceanK = (riceanKDist0(gen));
 
             // разброс задержки (DS)
-
-            std::normal_distribution<> loSdelaySpreadDist((-0.01 * log10(1 + fc) - 7.692), 0.18);
+            losStandardDeviationDS = 0.18;
+            std::normal_distribution<> loSdelaySpreadDist((-0.01 * log10(1 + fc) - 7.692), losStandardDeviationDS);
             delaySpread = loSdelaySpreadDist(gen);
 
             //Азимутальный угол Разброс вылета (ASD)
-            std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, 0.18);
+            losStandardDeviationASD = 0.18;
+            std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, losStandardDeviationASD);
             azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
@@ -122,21 +130,30 @@ public:
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             z << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
+            
+
             std::cout << z << "\n";
 
+            losStandardDeviationSF = pow(10, losStandardDeviationSF/10);
+            losStandardDeviationK = pow(10, losStandardDeviationK / 10);
+            losStandardDeviationDS = pow(10, losStandardDeviationDS );
+            losStandardDeviationASD = pow(10, losStandardDeviationASD );
+            losStandardDeviationASA = pow(10, losStandardDeviationASA);
+            losStandardDeviationZSD = pow(10, losStandardDeviationZSD );
+            losStandardDeviationZSA = pow(10, losStandardDeviationZSA);
             
-            /*
+            
             //SF K DS ASD ASA ZSD ZSA
-            C << 1, 0.5, -0.8, -0.4, -0.5, 0.2, 0.3,
-                0.5, 1, -0.5, 0.0, 0.0, 0.0, 0.1,
-                -0.8, -0.5, 1, 0.6, 0.8, 0.1, 0.2,
-                -0.4, 0.0, 0.6, 1, 0.4, 0.5, 0.0,
-                -0.5, 0.0, 0.8, 0.4, 1, 0.0, 0.5,
-                0.2, 0.0, 0.1, 0.5, 0.0, 1, 0.0,
-                0.3, 0.1, 0.2, 0.0, 0.5, 0.0, 1;
+            C << losStandardDeviationSF * losStandardDeviationSF, 0.5 * losStandardDeviationSF * losStandardDeviationK, -0.8 * losStandardDeviationSF * losStandardDeviationDS, -0.4 * losStandardDeviationSF * losStandardDeviationASD, -0.5 * losStandardDeviationSF * losStandardDeviationASA, 0.2 * losStandardDeviationSF * losStandardDeviationZSD, 0.3 * losStandardDeviationSF * losStandardDeviationZSA,
+                0.5 * losStandardDeviationK * losStandardDeviationSF, losStandardDeviationK * losStandardDeviationK, -0.5 * losStandardDeviationK * losStandardDeviationDS, 0.0 * losStandardDeviationK * losStandardDeviationASD, 0.0 * losStandardDeviationK * losStandardDeviationASA, 0.0 * losStandardDeviationK * losStandardDeviationZSD, 0.1 * losStandardDeviationK * losStandardDeviationZSA,
+                -0.8 * losStandardDeviationDS * losStandardDeviationSF, -0.5 * losStandardDeviationDS * losStandardDeviationK, losStandardDeviationDS * losStandardDeviationDS, 0.6 * losStandardDeviationDS * losStandardDeviationASD, 0.8 * losStandardDeviationDS * losStandardDeviationASA, 0.1 * losStandardDeviationDS * losStandardDeviationZSD, 0.2 * losStandardDeviationDS * losStandardDeviationZSA,
+                -0.4 * losStandardDeviationASD * losStandardDeviationSF, 0.0 * losStandardDeviationASD * losStandardDeviationK, 0.6 * losStandardDeviationASD * losStandardDeviationDS, losStandardDeviationASD * losStandardDeviationASD, 0.4 * losStandardDeviationASD * losStandardDeviationASA, 0.5 * losStandardDeviationASD * losStandardDeviationZSD, 0.0 * losStandardDeviationASD * losStandardDeviationZSA,
+                -0.5 * losStandardDeviationASA * losStandardDeviationSF, 0.0 * losStandardDeviationASA * losStandardDeviationK, 0.8 * losStandardDeviationASA * losStandardDeviationDS, 0.4 * losStandardDeviationASA * losStandardDeviationASD, losStandardDeviationASA * losStandardDeviationASA, 0.0 * losStandardDeviationASA * losStandardDeviationZSD, 0.5 * losStandardDeviationASA * losStandardDeviationZSA,
+                0.2 * losStandardDeviationZSD * losStandardDeviationSF, 0.0 * losStandardDeviationZSD * losStandardDeviationK, 0.1 * losStandardDeviationZSD * losStandardDeviationDS, 0.5 * losStandardDeviationZSD * losStandardDeviationASD, 0.0 * losStandardDeviationZSD * losStandardDeviationASA, losStandardDeviationZSD * losStandardDeviationZSD, 0.0 * losStandardDeviationZSD * losStandardDeviationZSA,
+                0.3 * losStandardDeviationZSA * losStandardDeviationSF, 0.1 * losStandardDeviationZSA * losStandardDeviationK, 0.2 * losStandardDeviationZSA * losStandardDeviationDS, 0.0 * losStandardDeviationZSA * losStandardDeviationASD, 0.5 * losStandardDeviationZSA * losStandardDeviationASA, 0.0 * losStandardDeviationZSA * losStandardDeviationZSD, losStandardDeviationZSA * losStandardDeviationZSA;
 
 
-            std::cout << C << "\n";
+            std::cout << C << std::endl << std::endl;
 
             
             // Вычисление и проверка главных миноров
@@ -183,7 +200,7 @@ public:
             azimuthSpreadArrival = z_new(4);
             zenithSpreadDeparture = z_new(5);
             zenithSpreadArrival = z_new(6);
-            */
+            
         }
         else
         {
