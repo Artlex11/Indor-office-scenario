@@ -71,80 +71,79 @@ public:
 
 
 
-        double losStandardDeviationSF;
-        double losStandardDeviationK;
-        double losStandardDeviationDS;
-        double losStandardDeviationASD;
-        double losStandardDeviationASA;
-        double losStandardDeviationZSA;
-        double losStandardDeviationZSD;
+        double StandardDeviationSF;
+        double StandardDeviationK;
+        double StandardDeviationDS;
+        double StandardDeviationASD;
+        double StandardDeviationASA;
+        double StandardDeviationZSA;
+        double StandardDeviationZSD;
 
-        double losMeanSF;
-        double losMeanK;
-        double losMeanDS;
-        double losMeanASD;
-        double losMeanASA;
-        double losMeanZSA;
-        double losMeanZSD;
-
-
-        VectorXd value(7);
-        VectorXd means(7);
-        MatrixXd C(7, 7);
+        double MeanSF;
+        double MeanK;
+        double MeanDS;
+        double MeanASD;
+        double MeanASA;
+        double MeanZSA;
+        double MeanZSD;
 
         if (los)
         {
+            VectorXd value(7);
+            VectorXd means(7);
+            MatrixXd C(7, 7);
+
             //Если LOS :
             //Затемнение SF
-            losStandardDeviationSF = 3;
-            losMeanSF = 0;
-            std::normal_distribution<> loSshadowFadingDist(losMeanSF, losStandardDeviationSF);
+            StandardDeviationSF = 3;
+            MeanSF = 0;
+            std::normal_distribution<> loSshadowFadingDist(MeanSF, StandardDeviationSF);
             shadowFading = loSshadowFadingDist(gen);
 
             //К-фактор (K)
-            losStandardDeviationK = 4;
-            losMeanK = 7;
-            std::normal_distribution<> riceanKDist0(losMeanK, losStandardDeviationK);
+            StandardDeviationK = 4;
+            MeanK = 7;
+            std::normal_distribution<> riceanKDist0(MeanK, StandardDeviationK);
             riceanK = (riceanKDist0(gen));
 
             // разброс задержки (DS)
-            losStandardDeviationDS = 0.18;
-            losMeanDS = (-0.01 * log10(1 + fc) - 7.692);
-            std::normal_distribution<> loSdelaySpreadDist(losMeanDS, losStandardDeviationDS);
+            StandardDeviationDS = 0.18;
+            MeanDS = (-0.01 * log10(1 + fc) - 7.692);
+            std::normal_distribution<> loSdelaySpreadDist(MeanDS, StandardDeviationDS);
             delaySpread = loSdelaySpreadDist(gen);
 
             //Азимутальный угол Разброс вылета (ASD)
-            losStandardDeviationASD = 0.18;
-            losMeanASD = 1.6;
-            std::normal_distribution<> loSAzimuthSpreadDepartureDist(losMeanASD, losStandardDeviationASD);
+            StandardDeviationASD = 0.18;
+            MeanASD = 1.6;
+            std::normal_distribution<> loSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
             azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
-            losStandardDeviationASA = (0.12 * log10(1 + fc) + 0.119);
-            losMeanASA = (-0.19 * log10(1 + fc) + 1.781);
-            std::normal_distribution<> loSAzimuthSpreadArrivalDist(losMeanASA, losStandardDeviationASA);
+            StandardDeviationASA = (0.12 * log10(1 + fc) + 0.119);
+            MeanASA = (-0.19 * log10(1 + fc) + 1.781);
+            std::normal_distribution<> loSAzimuthSpreadArrivalDist(MeanASA, StandardDeviationASA);
             azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent
             //Зенитный угол Разброс прихода (ZSA)
-            losStandardDeviationZSA = (-0.04 * log10(1 + fc) + 0.264);
-            losMeanZSA = (-0.26 * log10(1 + fc) + 1.44);
-            std::normal_distribution<> loSZenithSpreadArrivalDist(losMeanZSA, losStandardDeviationZSA);
+            StandardDeviationZSA = (-0.04 * log10(1 + fc) + 0.264);
+            MeanZSA = (-0.26 * log10(1 + fc) + 1.44);
+            std::normal_distribution<> loSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
             zenithSpreadArrival = std::min(loSZenithSpreadArrivalDist(gen), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
 
             if (fc < 6.0) {
-                losStandardDeviationZSD = (0.13 * log10(1 + 6) + 0.30);
-                losMeanZSD = (-1.43 * log10(1 + 6) + 2.228);
-                std::normal_distribution<> loSZenithSpreadDepartureDist(losMeanZSD, losStandardDeviationZSD);
+                StandardDeviationZSD = (0.13 * log10(1 + 6) + 0.30);
+                MeanZSD = (-1.43 * log10(1 + 6) + 2.228);
+                std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             else {
-                losStandardDeviationZSD = (0.13 * log10(1 + fc) + 0.30);
-                losMeanZSD = (-1.43 * log10(1 + fc) + 2.228);
-                std::normal_distribution<> loSZenithSpreadDepartureDist(losMeanZSD, losStandardDeviationZSD);
+                StandardDeviationZSD = (0.13 * log10(1 + fc) + 0.30);
+                MeanZSD = (-1.43 * log10(1 + fc) + 2.228);
+                std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             /*
@@ -158,7 +157,7 @@ public:
             */
 
             value << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
-            means << losMeanSF, losMeanK, losMeanDS, losMeanASD, losMeanASA, losMeanZSD, losMeanZSA;
+            means << MeanSF, MeanK, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
 
             std::cout << value << "\n";
             /*
@@ -172,13 +171,13 @@ public:
             */
             
             //SF K DS ASD ASA ZSD ZSA
-            C << losStandardDeviationSF * losStandardDeviationSF, 0.5 * losStandardDeviationSF * losStandardDeviationK, -0.8 * losStandardDeviationSF * losStandardDeviationDS, -0.4 * losStandardDeviationSF * losStandardDeviationASD, -0.5 * losStandardDeviationSF * losStandardDeviationASA, 0.2 * losStandardDeviationSF * losStandardDeviationZSD, 0.3 * losStandardDeviationSF * losStandardDeviationZSA,
-                0.5 * losStandardDeviationK * losStandardDeviationSF, losStandardDeviationK * losStandardDeviationK, -0.5 * losStandardDeviationK * losStandardDeviationDS, 0.0 * losStandardDeviationK * losStandardDeviationASD, 0.0 * losStandardDeviationK * losStandardDeviationASA, 0.0 * losStandardDeviationK * losStandardDeviationZSD, 0.1 * losStandardDeviationK * losStandardDeviationZSA,
-                -0.8 * losStandardDeviationDS * losStandardDeviationSF, -0.5 * losStandardDeviationDS * losStandardDeviationK, losStandardDeviationDS * losStandardDeviationDS, 0.6 * losStandardDeviationDS * losStandardDeviationASD, 0.8 * losStandardDeviationDS * losStandardDeviationASA, 0.1 * losStandardDeviationDS * losStandardDeviationZSD, 0.2 * losStandardDeviationDS * losStandardDeviationZSA,
-                -0.4 * losStandardDeviationASD * losStandardDeviationSF, 0.0 * losStandardDeviationASD * losStandardDeviationK, 0.6 * losStandardDeviationASD * losStandardDeviationDS, losStandardDeviationASD * losStandardDeviationASD, 0.4 * losStandardDeviationASD * losStandardDeviationASA, 0.5 * losStandardDeviationASD * losStandardDeviationZSD, 0.0 * losStandardDeviationASD * losStandardDeviationZSA,
-                -0.5 * losStandardDeviationASA * losStandardDeviationSF, 0.0 * losStandardDeviationASA * losStandardDeviationK, 0.8 * losStandardDeviationASA * losStandardDeviationDS, 0.4 * losStandardDeviationASA * losStandardDeviationASD, losStandardDeviationASA * losStandardDeviationASA, 0.0 * losStandardDeviationASA * losStandardDeviationZSD, 0.5 * losStandardDeviationASA * losStandardDeviationZSA,
-                0.2 * losStandardDeviationZSD * losStandardDeviationSF, 0.0 * losStandardDeviationZSD * losStandardDeviationK, 0.1 * losStandardDeviationZSD * losStandardDeviationDS, 0.5 * losStandardDeviationZSD * losStandardDeviationASD, 0.0 * losStandardDeviationZSD * losStandardDeviationASA, losStandardDeviationZSD * losStandardDeviationZSD, 0.0 * losStandardDeviationZSD * losStandardDeviationZSA,
-                0.3 * losStandardDeviationZSA * losStandardDeviationSF, 0.1 * losStandardDeviationZSA * losStandardDeviationK, 0.2 * losStandardDeviationZSA * losStandardDeviationDS, 0.0 * losStandardDeviationZSA * losStandardDeviationASD, 0.5 * losStandardDeviationZSA * losStandardDeviationASA, 0.0 * losStandardDeviationZSA * losStandardDeviationZSD, losStandardDeviationZSA * losStandardDeviationZSA;
+            C << StandardDeviationSF * StandardDeviationSF, 0.5 * StandardDeviationSF * StandardDeviationK, -0.8 * StandardDeviationSF * StandardDeviationDS, -0.4 * StandardDeviationSF * StandardDeviationASD, -0.5 * StandardDeviationSF * StandardDeviationASA, 0.2 * StandardDeviationSF * StandardDeviationZSD, 0.3 * StandardDeviationSF * StandardDeviationZSA,
+                0.5 * StandardDeviationK * StandardDeviationSF, StandardDeviationK * StandardDeviationK, -0.5 * StandardDeviationK * StandardDeviationDS, 0.0 * StandardDeviationK * StandardDeviationASD, 0.0 * StandardDeviationK * StandardDeviationASA, 0.0 * StandardDeviationK * StandardDeviationZSD, 0.1 * StandardDeviationK * StandardDeviationZSA,
+                -0.8 * StandardDeviationDS * StandardDeviationSF, -0.5 * StandardDeviationDS * StandardDeviationK, StandardDeviationDS * StandardDeviationDS, 0.6 * StandardDeviationDS * StandardDeviationASD, 0.8 * StandardDeviationDS * StandardDeviationASA, 0.1 * StandardDeviationDS * StandardDeviationZSD, 0.2 * StandardDeviationDS * StandardDeviationZSA,
+                -0.4 * StandardDeviationASD * StandardDeviationSF, 0.0 * StandardDeviationASD * StandardDeviationK, 0.6 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD * StandardDeviationASD, 0.4 * StandardDeviationASD * StandardDeviationASA, 0.5 * StandardDeviationASD * StandardDeviationZSD, 0.0 * StandardDeviationASD * StandardDeviationZSA,
+                -0.5 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationK, 0.8 * StandardDeviationASA * StandardDeviationDS, 0.4 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA * StandardDeviationASA, 0.0 * StandardDeviationASA * StandardDeviationZSD, 0.5 * StandardDeviationASA * StandardDeviationZSA,
+                0.2 * StandardDeviationZSD * StandardDeviationSF, 0.0 * StandardDeviationZSD * StandardDeviationK, 0.1 * StandardDeviationZSD * StandardDeviationDS, 0.5 * StandardDeviationZSD * StandardDeviationASD, 0.0 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD * StandardDeviationZSD, 0.0 * StandardDeviationZSD * StandardDeviationZSA,
+                0.3 * StandardDeviationZSA * StandardDeviationSF, 0.1 * StandardDeviationZSA * StandardDeviationK, 0.2 * StandardDeviationZSA * StandardDeviationDS, 0.0 * StandardDeviationZSA * StandardDeviationASD, 0.5 * StandardDeviationZSA * StandardDeviationASA, 0.0 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA * StandardDeviationZSA;
 
 
             std::cout << C << std::endl << std::endl;
@@ -219,7 +218,7 @@ public:
             // Генерация стандартных нормальных случайных величин
             std::default_random_engine gen;
             std::normal_distribution<double> normDist(0.0, 1.0);
-            VectorXd value(7);
+            
             for (int i = 0; i < 7; ++i) {
                 value(i) = normDist(gen);
             }
@@ -239,31 +238,128 @@ public:
         }
         else
         {
+            VectorXd value(6);
+            VectorXd means(6);
+            MatrixXd C(6, 6);
+
             //Если NLOS:
             //Затенение (SF)
-            std::normal_distribution<> nLoSshadowFadingDist(0, 8.03);
+            StandardDeviationSF = 8.03;
+            MeanSF = 0;
+            std::normal_distribution<> nLoSshadowFadingDist(MeanSF, StandardDeviationSF);
             shadowFading = nLoSshadowFadingDist(gen);
 
             // разброс задержки (DS)
-            std::normal_distribution<> nLoSdelaySpreadDist((-0.28 * log10(1 + fc) - 7.173), (0.10 * log10(1 + fc) + 0.055));
+            StandardDeviationDS = (0.10 * log10(1 + fc) + 0.055);
+            MeanDS = (-0.28 * log10(1 + fc) - 7.173);
+            std::normal_distribution<> nLoSdelaySpreadDist(MeanDS, StandardDeviationDS);
             delaySpread = nLoSdelaySpreadDist(gen); // Задержка распространения НЛОС
 
             //Азимутальный угол Разброс вылета (ASD)
-            std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(1.62, 0.25);
+            StandardDeviationASD = 0.25;
+            MeanASD = 1.62;
+            std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
             azimuthSpreadDeparture = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
-            std::normal_distribution<> nLoSAzimuthSpreadArrivaDist((-0.11 * log10(1 + fc) + 1.863), (0.12 * log10(1 + fc) + 0.059));
+            StandardDeviationASA = (0.12 * log10(1 + fc) + 0.059);
+            MeanASA = (-0.11 * log10(1 + fc) + 1.863);
+            std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(MeanASA, StandardDeviationASA);
             azimuthSpreadArrival = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //Зенитный угол Разброс прихода (ZSA)
-            std::normal_distribution<> nLoSZenithSpreadArrivalDist((-0.15 * log10(1 + fc) + 1.387), (-0.09 * log10(1 + fc) + 0.746));
+            StandardDeviationZSA = (-0.09 * log10(1 + fc) + 0.746);
+            MeanZSA = (-0.15 * log10(1 + fc) + 1.387);
+            std::normal_distribution<> nLoSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
             zenithSpreadArrival = std::min(nLoSZenithSpreadArrivalDist(gen), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
-            std::normal_distribution<> nLoSZenithSpreadDepartureDist(1.08, 0.36);
+            StandardDeviationZSD = 0.36;
+            MeanZSD = 1.08;
+
+            std::normal_distribution<> nLoSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
             zenithSpreadDeparture = std::min(nLoSZenithSpreadDepartureDist(gen), log10(52.0));
+
+            value << shadowFading, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
+            means << MeanSF,  MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
+
+            std::cout << value << "\n";
+            /*
+            losStandardDeviationSF = pow(10, losStandardDeviationSF/10);
+            losStandardDeviationK = pow(10, losStandardDeviationK / 10);
+            losStandardDeviationDS = pow(10, losStandardDeviationDS );
+            losStandardDeviationASD = pow(10, losStandardDeviationASD );
+            losStandardDeviationASA = pow(10, losStandardDeviationASA);
+            losStandardDeviationZSD = pow(10, losStandardDeviationZSD );
+            losStandardDeviationZSA = pow(10, losStandardDeviationZSA);
+            */
+
+            //SF  DS ASD ASA ZSD ZSA
+            C << StandardDeviationSF * StandardDeviationSF, -0.5 * StandardDeviationSF * StandardDeviationDS, 0.0 * StandardDeviationSF * StandardDeviationASD, -0.4 * StandardDeviationSF * StandardDeviationASA, 0.0 * StandardDeviationSF * StandardDeviationZSD, 0.0 * StandardDeviationSF * StandardDeviationZSA,
+                -0.5 * StandardDeviationDS * StandardDeviationSF,  StandardDeviationDS* StandardDeviationDS, 0.4 * StandardDeviationDS * StandardDeviationASD, 0.0 * StandardDeviationDS * StandardDeviationASA, -0.27 * StandardDeviationDS * StandardDeviationZSD, -0.06 * StandardDeviationDS * StandardDeviationZSA,
+                0.0 * StandardDeviationASD * StandardDeviationSF,  0.4 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD * StandardDeviationASD, 0.0 * StandardDeviationASD * StandardDeviationASA, 0.35 * StandardDeviationASD * StandardDeviationZSD, 0.23 * StandardDeviationASD * StandardDeviationZSA,
+                -0.4 * StandardDeviationASA * StandardDeviationSF,  0.0 * StandardDeviationASA * StandardDeviationDS, 0.0 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA * StandardDeviationASA, -0.08 * StandardDeviationASA * StandardDeviationZSD, 0.43 * StandardDeviationASA * StandardDeviationZSA,
+                0.0 * StandardDeviationZSD * StandardDeviationSF,  -0.27 * StandardDeviationZSD * StandardDeviationDS, 0.35 * StandardDeviationZSD * StandardDeviationASD, -0.08 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.42 * StandardDeviationZSD * StandardDeviationZSA,
+                0.0 * StandardDeviationZSA * StandardDeviationSF,  -0.06 * StandardDeviationZSA * StandardDeviationDS, 0.23 * StandardDeviationZSA * StandardDeviationASD, 0.43 * StandardDeviationZSA * StandardDeviationASA, 0.42 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
+
+            std::cout << C << std::endl << std::endl;
+
+
+            // Вычисление и проверка главных миноров
+            for (int i = 1; i <= C.rows(); ++i) {
+                // Получаем верхнюю левую подматрицу размером i x i
+                MatrixXd minor = C.topLeftCorner(i, i);
+
+                // Вычисляем определитель (главный минор)
+                double determinant = minor.determinant();
+
+                // Выводим значение и знак главного минора
+                std::cout << i << "x" << i << ": " << determinant << std::endl;
+                if (determinant > 0) {
+                    std::cout << "+ " << std::endl;
+                }
+                else if (determinant < 0) {
+                    std::cout << "- " << std::endl;
+                }
+                else {
+                    std::cout << "0 " << std::endl;
+                }
+            }
+
+
+            MatrixXd L;
+            L = C.llt().matrixL();
+            std::cout << L << "\n";
+
+            // Проверка на положительную определенность
+            if (C.llt().info() != Success) {
+                std::cerr << "Matrix C is not positive definite!" << std::endl;
+                return;
+            }
+
+            // Генерация стандартных нормальных случайных величин
+            std::default_random_engine gen;
+            std::normal_distribution<double> normDist(0.0, 1.0);
+            
+            for (int i = 0; i < 6; ++i) {
+                value(i) = normDist(gen);
+            }
+
+            // Преобразование случайных величин с помощью матрицы Лапласа
+
+            VectorXd value_new = L * value + means;
+
+            shadowFading = value_new(0);
+            delaySpread = value_new(1);
+            azimuthSpreadDeparture = std::min((value_new(2)), log10(104.0));
+            azimuthSpreadArrival = std::min((value_new(3)), log10(104.0));
+            zenithSpreadDeparture = std::min((value_new(4)), log10(52.0));
+            zenithSpreadArrival = std::min((value_new(5)), log10(52.0));
+
+
+
+
         }
     }
 
