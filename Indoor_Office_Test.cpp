@@ -79,7 +79,17 @@ public:
         double losStandardDeviationZSA;
         double losStandardDeviationZSD;
 
-        VectorXd z(7);
+        double losMeanSF;
+        double losMeanK;
+        double losMeanDS;
+        double losMeanASD;
+        double losMeanASA;
+        double losMeanZSA;
+        double losMeanZSD;
+
+
+        VectorXd value(7);
+        VectorXd means(7);
         MatrixXd C(7, 7);
 
         if (los)
@@ -87,53 +97,71 @@ public:
             //Если LOS :
             //Затемнение SF
             losStandardDeviationSF = 3;
-            std::normal_distribution<> loSshadowFadingDist(0, losStandardDeviationSF);
+            losMeanSF = 0;
+            std::normal_distribution<> loSshadowFadingDist(losMeanSF, losStandardDeviationSF);
             shadowFading = loSshadowFadingDist(gen);
 
             //К-фактор (K)
             losStandardDeviationK = 4;
-            std::normal_distribution<> riceanKDist0(7, losStandardDeviationK);
+            losMeanK = 7;
+            std::normal_distribution<> riceanKDist0(losMeanK, losStandardDeviationK);
             riceanK = (riceanKDist0(gen));
 
             // разброс задержки (DS)
             losStandardDeviationDS = 0.18;
-            std::normal_distribution<> loSdelaySpreadDist((-0.01 * log10(1 + fc) - 7.692), losStandardDeviationDS);
+            losMeanDS = (-0.01 * log10(1 + fc) - 7.692);
+            std::normal_distribution<> loSdelaySpreadDist(losMeanDS, losStandardDeviationDS);
             delaySpread = loSdelaySpreadDist(gen);
 
             //Азимутальный угол Разброс вылета (ASD)
             losStandardDeviationASD = 0.18;
-            std::normal_distribution<> loSAzimuthSpreadDepartureDist(1.6, losStandardDeviationASD);
+            losMeanASD = 1.6;
+            std::normal_distribution<> loSAzimuthSpreadDepartureDist(losMeanASD, losStandardDeviationASD);
             azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
             losStandardDeviationASA = (0.12 * log10(1 + fc) + 0.119);
-            std::normal_distribution<> loSAzimuthSpreadArrivalDist((-0.19 * log10(1 + fc) + 1.781), losStandardDeviationASA);
+            losMeanASA = (-0.19 * log10(1 + fc) + 1.781);
+            std::normal_distribution<> loSAzimuthSpreadArrivalDist(losMeanASA, losStandardDeviationASA);
             azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent
             //Зенитный угол Разброс прихода (ZSA)
             losStandardDeviationZSA = (-0.04 * log10(1 + fc) + 0.264);
-            std::normal_distribution<> loSZenithSpreadArrivalDist((-0.26 * log10(1 + fc) + 1.44), losStandardDeviationZSA);
+            losMeanZSA = (-0.26 * log10(1 + fc) + 1.44);
+            std::normal_distribution<> loSZenithSpreadArrivalDist(losMeanZSA, losStandardDeviationZSA);
             zenithSpreadArrival = std::min(loSZenithSpreadArrivalDist(gen), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
 
             if (fc < 6.0) {
                 losStandardDeviationZSD = (0.13 * log10(1 + 6) + 0.30);
-                std::normal_distribution<> loSZenithSpreadDepartureDist((-1.43 * log10(1 + 6) + 2.228), losStandardDeviationZSD);
+                losMeanZSD = (-1.43 * log10(1 + 6) + 2.228);
+                std::normal_distribution<> loSZenithSpreadDepartureDist(losMeanZSD, losStandardDeviationZSD);
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             else {
                 losStandardDeviationZSD = (0.13 * log10(1 + fc) + 0.30);
-                std::normal_distribution<> loSZenithSpreadDepartureDist((-1.43 * log10(1 + fc) + 2.228), losStandardDeviationZSD);
+                losMeanZSD = (-1.43 * log10(1 + fc) + 2.228);
+                std::normal_distribution<> loSZenithSpreadDepartureDist(losMeanZSD, losStandardDeviationZSD);
                 zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
-            z << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
-            
+            /*
+            shadowFading = pow(10, shadowFading / 10);
+            riceanK = pow(10, riceanK / 10);
+            delaySpread = pow(10, delaySpread);
+            azimuthSpreadDeparture = pow(10, azimuthSpreadDeparture);
+            azimuthSpreadArrival = pow(10, azimuthSpreadArrival);
+            zenithSpreadDeparture = pow(10, zenithSpreadDeparture);
+            zenithSpreadArrival = pow(10, zenithSpreadArrival);
+            */
 
-            std::cout << z << "\n";
+            value << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
+            means << losMeanSF, losMeanK, losMeanDS, losMeanASD, losMeanASA, losMeanZSD, losMeanZSA;
 
+            std::cout << value << "\n";
+            /*
             losStandardDeviationSF = pow(10, losStandardDeviationSF/10);
             losStandardDeviationK = pow(10, losStandardDeviationK / 10);
             losStandardDeviationDS = pow(10, losStandardDeviationDS );
@@ -141,7 +169,7 @@ public:
             losStandardDeviationASA = pow(10, losStandardDeviationASA);
             losStandardDeviationZSD = pow(10, losStandardDeviationZSD );
             losStandardDeviationZSA = pow(10, losStandardDeviationZSA);
-            
+            */
             
             //SF K DS ASD ASA ZSD ZSA
             C << losStandardDeviationSF * losStandardDeviationSF, 0.5 * losStandardDeviationSF * losStandardDeviationK, -0.8 * losStandardDeviationSF * losStandardDeviationDS, -0.4 * losStandardDeviationSF * losStandardDeviationASD, -0.5 * losStandardDeviationSF * losStandardDeviationASA, 0.2 * losStandardDeviationSF * losStandardDeviationZSD, 0.3 * losStandardDeviationSF * losStandardDeviationZSA,
@@ -188,18 +216,25 @@ public:
                 return;
             }
 
-            VectorXd z_new;
-            z_new = L * z;
+            // Генерация стандартных нормальных случайных величин
+            std::default_random_engine gen;
+            std::normal_distribution<double> normDist(0.0, 1.0);
+            VectorXd value(7);
+            for (int i = 0; i < 7; ++i) {
+                value(i) = normDist(gen);
+            }
 
-            std::cout << z_new << "\n";
+            // Преобразование случайных величин с помощью матрицы Лапласа
+            
+            VectorXd value_new = L * value + means;
 
-            shadowFading = z_new(0);
-            riceanK = z_new(1);
-            delaySpread = z_new(2);
-            azimuthSpreadDeparture = z_new(3);
-            azimuthSpreadArrival = z_new(4);
-            zenithSpreadDeparture = z_new(5);
-            zenithSpreadArrival = z_new(6);
+            shadowFading = value_new(0);
+            riceanK = value_new(1);
+            delaySpread = value_new(2);
+            azimuthSpreadDeparture = std::min((value_new(3)), log10(104.0)); 
+            azimuthSpreadArrival = std::min((value_new(4)), log10(104.0));
+            zenithSpreadDeparture = std::min((value_new(5)), log10(52.0));
+            zenithSpreadArrival = std::min((value_new(6)), log10(52.0));
             
         }
         else
@@ -240,11 +275,11 @@ public:
     void showParameters() {
         if (los) {
             // Вывод LSP параметров для NLOS
-            std::cout << "SF [dB] : " << shadowFading << ",\nK [dB] : " << riceanK << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASA [log10(ASA/ 1* degree] :  " << azimuthSpreadArrival << ",\nASD [log10(ASA/ 1* degree] : " << azimuthSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << std::endl << std::endl;
+            std::cout << "SF [dB] : " << shadowFading << ",\nK [dB] : " << riceanK << ",\nDS [log10(DS/1s)] : " << delaySpread <<  ",\nASD [log10(ASA/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] :  " << azimuthSpreadArrival <<  ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
         }
         else {
             // Вывод LSP параметров для NLOS
-            std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << std::endl << std::endl;
+            std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread <<  ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival <<  ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
         }
     }
 
