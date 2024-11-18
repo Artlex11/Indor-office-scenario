@@ -124,17 +124,8 @@ public:
             z << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
             std::cout << z << "\n";
 
-            //z << pow(10, shadowFading / 10) , pow(10, riceanK / 10), pow(10, delaySpread), pow(10, azimuthSpreadDeparture), pow(10, azimuthSpreadArrival), pow(10, zenithSpreadDeparture), pow(10, zenithSpreadArrival);
-            //std::cout << z<< "\n";
-
-            double dispersionSF = pow(10, 3 * 3 / 10);
-            double dispersionK = pow(10, 4 * 4 / 10);
-            double dispersionDS = pow(10, 0.18 * 0.18);
-            double dispersionASD = pow(10, 0.18 * 0.18);
-            double dispersionASA = pow(10, losStandardDeviationASA * losStandardDeviationASA);
-            double dispersionZSD = pow(10, losStandardDeviationZSD * losStandardDeviationZSD);
-            double dispersionZSA = pow(10, losStandardDeviationZSA * losStandardDeviationZSA);
-
+            
+            /*
             //SF K DS ASD ASA ZSD ZSA
             C << 1, 0.5, -0.8, -0.4, -0.5, 0.2, 0.3,
                 0.5, 1, -0.5, 0.0, 0.0, 0.0, 0.1,
@@ -145,9 +136,9 @@ public:
                 0.3, 0.1, 0.2, 0.0, 0.5, 0.0, 1;
 
 
-
             std::cout << C << "\n";
 
+            
             // Вычисление и проверка главных миноров
             for (int i = 1; i <= C.rows(); ++i) {
                 // Получаем верхнюю левую подматрицу размером i x i
@@ -168,6 +159,8 @@ public:
                     std::cout << "0 " << std::endl;
                 }
             }
+            
+
             MatrixXd L;
             L = C.llt().matrixL();
             std::cout << L << "\n";
@@ -190,6 +183,7 @@ public:
             azimuthSpreadArrival = z_new(4);
             zenithSpreadDeparture = z_new(5);
             zenithSpreadArrival = z_new(6);
+            */
         }
         else
         {
@@ -806,6 +800,50 @@ Eigen::MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPow
         return Phi_n_m_ZOD;
     }
 }
+//_________________________________________A_1________________________________________________________//
+std::vector<double> calculateAngularSpreadandMeanAngles(bool los , const std::vector<double>& clasterPowers,  MatrixXd& AOD,  MatrixXd& AOA,  MatrixXd& ZOD,  MatrixXd& ZOA ) {
+    std::vector<double> ASandMeanAnglesforAOD_AOA_ZOD_ZOA;
+
+    AOD = AOD * M_PI / 180;
+    AOA = AOA * M_PI / 180;
+    ZOD = ZOD * M_PI / 180;
+    ZOA = ZOA * M_PI / 180;
+
+    std::complex<double> weighted_sumAOA(0.0, 0.0); 
+    std::complex<double> weighted_sumAOD(0.0, 0.0);
+    std::complex<double> weighted_sumZOA(0.0, 0.0);
+    std::complex<double> weighted_sumZOD(0.0, 0.0);
+    double weighted_sumPowers = 0.0;
+
+    // Вычисление взвешенной суммы комплексных экспонент
+    for (int n = 0; n < clasterPowers.size(); ++n) {
+        if (n == 0 && los) { continue; }
+        for (int m = 0; m < 20; ++m) {   
+            weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n, m)));
+            weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n, m)));
+            weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n, m)));
+            weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n, m)));
+            weighted_sumPowers += (clasterPowers[n] / 20);
+
+        }
+    }
+
+    // Вычисление углового рассеяния
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back( sqrt( - 2.0 * std::log(std::abs(weighted_sumAOD / weighted_sumPowers))));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumAOA / weighted_sumPowers))));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumZOD / weighted_sumPowers))));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumZOA / weighted_sumPowers))));
+
+
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumAOD.imag(), weighted_sumAOD.real()));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumAOA.imag(), weighted_sumAOA.real()));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumZOD.imag(), weighted_sumZOD.real()));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumZOA.imag(), weighted_sumZOA.real()));
+    return ASandMeanAnglesforAOD_AOA_ZOD_ZOA;
+}
+
+
+
 
 //_________________________________________STEP_8_____________________________________________________//
 // Функция для перемешивания лучей (путей) в 4 углах для каждого кластера
@@ -948,7 +986,7 @@ Eigen::MatrixXd generateInitialRandomPhases(std::vector<double>& clusterPowers)
         }
     }
     return initialRandomPhases;
-};
+}
 
 //______________________________________________STEP_11____________________________________________________//
 //ИХ для НЛОС
@@ -1472,6 +1510,25 @@ int main() {
             std::cout << ThetaZOA << std::endl << std::endl;
         }
 
+        //___________A1___A2___________//
+        std::vector<double> AS = calculateAngularSpreadandMeanAngles(los,clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA);
+        std::cout << "AS for AOD | AOA | ZOD | ZOA : ";
+        for (size_t i = 0; i < 4 && i < AS.size(); ++i) {
+            std::cout << AS[i] << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "Mean Angles for AOD | AOA | ZOD | ZOA : " <<  std::endl;
+        for (size_t i = 4; i < 8 && i < AS.size(); ++i) {
+            std::cout << AS[i] << " ";
+        }
+        std::cout << std::endl;
+       
+
+
+
+
+
         //_____________STEP_9_______________//
 
         //XPR
@@ -1497,11 +1554,13 @@ int main() {
 
         if (!los) {
             Eigen::MatrixXcd channelСoefficients = generateNLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
-            std::cout << "channel coefficients: \n" << channelСoefficients << " \n";
+            Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
+            std::cout << "Module channelСoefficients:\n" << modulusMatrix << std::endl;
         }
         else {
             Eigen::MatrixXcd channelСoefficients = generateLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases, lsp.riceanK);
-            std::cout << "channel coefficients: \n" << channelСoefficients << " \n";
+            Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
+            std::cout << "Module channelСoefficients:\n" << modulusMatrix << std::endl;
         }
     }
     return 0;
