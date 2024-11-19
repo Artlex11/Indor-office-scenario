@@ -7,6 +7,7 @@
 #include <set>
 #include <algorithm> 
 #include <Eigen/Dense>
+#include <chrono>
 
 using namespace Eigen;
 // Создание пары векторов
@@ -216,7 +217,7 @@ public:
             }
 
             // Генерация стандартных нормальных случайных величин
-            std::default_random_engine gen;
+            std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
             std::normal_distribution<double> normDist(0.0, 1.0);
             
             for (int i = 0; i < 7; ++i) {
@@ -339,7 +340,7 @@ public:
             }
 
             // Генерация стандартных нормальных случайных величин
-            std::default_random_engine gen;
+            std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
             std::normal_distribution<double> normDist(0.0, 1.0);
             
             for (int i = 0; i < 6; ++i) {
@@ -401,34 +402,54 @@ public:
     {}
 
     // Методы для вычисления ДН полей //Vector2d - вектор столбцы с двумя координатами
-    Eigen::Vector2d FieldPattern(double thetaAngle, double phiAngle, double ksi) const
+    Vector2d FieldPattern(double theta, double phi, double ksi ) const
     {
-        Eigen::Vector2d fieldPattern;
-        thetaAngle = thetaAngle * 180 / M_PI;
-        phiAngle = phiAngle * 180 / M_PI;
 
+        double alpha = bearingAngle;
+        double beta = downtiltAngle;
+        double gamma = slantAngle;
+
+        //std::cout << alpha << ", " << beta << ", " << gamma;
+        // Inverse rotation matrix
+        MatrixXd inv_R(3,3);
+        inv_R <<
+                        cos(alpha) * cos(beta),                                         sin(alpha)* cos(beta),                                    -sin(beta),
+            cos(alpha)* sin(beta)* sin(gamma) - sin(alpha) * cos(gamma),     sin(alpha)* sin(beta)* sin(gamma) + cos(alpha) * cos(gamma),   cos(beta)* sin(gamma),
+            cos(alpha)* sin(beta)* cos(gamma) + sin(alpha) * sin(gamma),     sin(alpha)* sin(beta)* cos(gamma) - cos(alpha) * sin(gamma),   cos(beta)* cos(gamma);
+        //std::cout << inv_R;
+
+        VectorXd xyz(3);
+        xyz << sin(theta * M_PI / 180) * cos(phi * M_PI / 180), sin(theta * M_PI / 180)* sin(phi * M_PI / 180), cos(theta * M_PI / 180); // r = 1 
+        Vector3d v(0, 0, 1);
+        Vector3cd u(1.0, std::complex<double>(0.0, 1.0), 0.0);
+
+
+        double theta_LSC = acos(v.transpose() * inv_R * xyz);
+        std::complex<double> temp = u.transpose() * inv_R * xyz;
+        //std::cout << temp1;
+        double phi_LSC = atan2(temp.imag(),temp.real());
+
+        
+
+
+
+        Eigen::Vector2d fieldPattern;
+        phi_LSC = phi_LSC * 180 / M_PI;
+        theta_LSC = theta_LSC * 180 / M_PI;
+        //std::cout << theta_LSC << ", " << phi_LSC << std::endl;
         ksi = ksi * M_PI / 180;
 
-        //Считалось ранее по модели 1 
-        //double f2_Theta = sqrt(std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0));
-        //double f2_Phi = sqrt(std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0));
-        //double cos_Pci = (cos(ksi) * sin(thetaAngle) + sin(ksi) * sin(phiAngle) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
-        //double sin_Pci = (sin(ksi) * cos(thetaAngle)) / (pow((1 - (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle)) * (cos(ksi) * cos(thetaAngle) - sin(ksi) * sin(phiAngle) * cos(thetaAngle))), 0.5));
-        //double f1_Theta = sin_Pci * f2_Theta + cos_Pci * f2_Phi;
-        //double f1_Phi = cos_Pci * f2_Theta - sin_Pci * f2_Phi;
+        
 
         // Theta
         // -min(12((Theta-90)/Theta3D)^2, SLA_V) Theta3D = 65 deg SLA_V = 30 dB
-        double AverticalPowerPattern = (-1) * std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0);
+        double AverticalPowerPattern = (-1) * std::min(12 * ((theta_LSC - 90) / 65) * ((theta_LSC - 90) / 65), 30.0);
 
         // Phi
         //-min(12(Phi/Phi3D)^2, A_max) Phi_3D = 65 deg, A_max = 30 dB
-        double AhorizontalPowerPattern = (-1) * std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0);
+        double AhorizontalPowerPattern = (-1) * std::min(12 * (phi_LSC / 65) * (phi_LSC / 65), 30.0);
 
-        /*
-        double AverticalPowerPattern = (-1) * std::min(12 * (phiAngle / 65) * (phiAngle / 65), 30.0);
-        double AhorizontalPowerPattern = (-1) * std::min(12 * ((thetaAngle - 90) / 65) * ((thetaAngle - 90) / 65), 30.0);
-        */
+        
 
         double A3D_PowerPattern = 8 - std::min((-1) * (AverticalPowerPattern + AhorizontalPowerPattern), 30.0); // знак "-" в начале формулы
 
@@ -444,7 +465,7 @@ public:
     }
 
     // в fieldPattern - 1 theta, 2 phi
-
+    /*
     //Переход от LSC в GSC 
     Eigen::Vector2d transformationFromLCStoGCS(double thetaAngle, double phiAngle, double bearingAngle, double downtiltAngle, double slantAngle, Eigen::Vector2d& fieldPattern) const
     {
@@ -465,7 +486,7 @@ public:
         transformFieldPattern << f_Theta, f_Phi;
         return transformFieldPattern;
     }
-
+    */
     void calculateLOSAngles(const UserTerminal& transmitter, const UserTerminal& receiver,
         double& losPhiAOD, double& losThetaZOD,
         double& losPhiAOA, double& losThetaZOA) const
@@ -1164,11 +1185,11 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
                 else { ksi_tx = -45; }
                 for (int m = 0; m < 20; ++m) {
                     if (n > 1) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
-                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
-                        Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                        Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
+                        //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
+                        //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                         Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
                             sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
@@ -1200,11 +1221,11 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
                     }
                     else if (n < 2) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
-                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
-                        Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                        Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
+                        //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
+                        //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                         Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
                             sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
@@ -1287,11 +1308,11 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                 else { ksi_tx = -45; }
                 for (int m = 0; m < 20; ++m) {
                     if (n > 2) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
-                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m),ksi_rx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m),ksi_rx);
 
-                        Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                        Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
+                        //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
+                        //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                         Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
                             sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
@@ -1322,11 +1343,11 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
                     }
                     else if (n > 0 && n < 3) {
-                        Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
-                        Eigen::Vector2d F1_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
-                        Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                        Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
+                        //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
+                        //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                         Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
                             sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
@@ -1369,11 +1390,11 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                 }
 
                 if (n == 0) {
-                    Eigen::Vector2d F1_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0),0.0);
-                    Eigen::Vector2d F1_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0),0.0);
+                    Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0),0.0);
+                    Eigen::Vector2d F_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0),0.0);
 
-                    Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                    Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
+                    //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
+                    //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                     Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, 0)) * cos(phiAOD_n_m(n, 0)),
                         sin(thetaZOD_n_m(n, 0)) * sin(phiAOD_n_m(n, 0)),
@@ -1437,11 +1458,10 @@ int main() {
 
     for (int i = 1; i <= 12; ++i) {
         //double bearing = (rand() % 90) * M_PI / 180.0; // Угол поворота 
-        double bearing = ((std::rand() % 360) - 180) * M_PI / 180.0;;
+        double bearing = (std::rand() % 360) * M_PI / 180.0;
         double downtilt = (rand() % 90) * M_PI / 180.0; // Угол наклона
-        //double slant = (rand() % 90) * M_PI / 180.0; // Угол наклона
+        double slant = (rand() % 90) * M_PI / 180.0; // Угол наклона
         
-        double slant = 0;
         UserTerminal newUT(i, 0, 0, userHeight, bearing, downtilt, slant);
         bool isValidPosition = false;
 
@@ -1490,17 +1510,22 @@ int main() {
         std::cout << "LOS ZOD, AOD: (" << losThetaZOD << ", " << losPhiAOD << "),\n"
             << "LOS ZOA, AOA: (" << losThetaZOA << ", " << losPhiAOA << ")\n\n";
 
-        Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD,0);
+        Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD,45);
         std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] << std::endl;
+        /*
         Eigen::Vector2d txAntennaPattern = transmitter.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F_tx);
         std::cout << "Bearing Angle for transmitter  = " << transmitter.downtiltAngle << " rad" << std::endl;
         std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << txAntennaPattern[0] << " ; " << txAntennaPattern[1] << " }" << std::endl << std::endl;
+        */
 
-        Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA,0);
-        std::cout << "{F_rx_theta,F_rx_pfi} : " << F_rx[0] << " ; " << F_rx[1] << " \n";
+        Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA,45);
+        std::cout << "{F_rx_theta,F_rx_pfi} : " << F_rx[0] << " ; " << F_rx[1] << std::endl;
+        /*
         Eigen::Vector2d rxAntennaPattern = receiver.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F_rx);
         std::cout << "Bearing Angle for receiver  = " << receiver.downtiltAngle << " rad" << std::endl;
         std::cout << "Transformation from LCS to GCS F_rx_Theta, F_rx_Pfi  : { " << rxAntennaPattern[0] << " ; " << rxAntennaPattern[1] << " }" << std::endl << std::endl;
+        */
+
         // Элементы антенны
         Eigen::MatrixXd d_tx = transmitter.generateAntennaElements();
         std::cout << "d_tx :\n" << d_tx << std::endl << std::endl;
@@ -1670,7 +1695,7 @@ int main() {
         for (size_t i = 4; i < 8 && i < AS.size(); ++i) {
             std::cout << AS[i] << " ";
         }
-        std::cout << std::endl;
+        std::cout << std::endl << std::endl;
        
 
 
@@ -1703,12 +1728,12 @@ int main() {
         if (!los) {
             Eigen::MatrixXcd channelСoefficients = generateNLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
             Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
-            std::cout << "Module channelСoefficients:\n" << modulusMatrix << std::endl;
+            std::cout << "Module channelCoefficients:\n" << modulusMatrix << std::endl;
         }
         else {
             Eigen::MatrixXcd channelСoefficients = generateLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases, lsp.riceanK);
             Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
-            std::cout << "Module channelСoefficients:\n" << modulusMatrix << std::endl;
+            std::cout << "Module channelCoefficients:\n" << modulusMatrix << std::endl;
         }
     }
     return 0;
