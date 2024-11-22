@@ -92,60 +92,61 @@ public:
         {
             VectorXd value(7);
             VectorXd means(7);
+            VectorXd standardDeviation(7);
             MatrixXd C(7, 7);
 
             //Если LOS :
             //Затемнение SF
             StandardDeviationSF = 3;
             MeanSF = 0;
-            std::normal_distribution<> loSshadowFadingDist(MeanSF, StandardDeviationSF);
-            shadowFading = loSshadowFadingDist(gen);
+            //std::normal_distribution<> loSshadowFadingDist(MeanSF, StandardDeviationSF);
+            //shadowFading = loSshadowFadingDist(gen);
 
             //К-фактор (K)
             StandardDeviationK = 4;
             MeanK = 7;
-            std::normal_distribution<> riceanKDist0(MeanK, StandardDeviationK);
-            riceanK = (riceanKDist0(gen));
+            //std::normal_distribution<> riceanKDist0(MeanK, StandardDeviationK);
+            //riceanK = (riceanKDist0(gen));
 
             // разброс задержки (DS)
             StandardDeviationDS = 0.18;
             MeanDS = (-0.01 * log10(1 + fc) - 7.692);
-            std::normal_distribution<> loSdelaySpreadDist(MeanDS, StandardDeviationDS);
-            delaySpread = loSdelaySpreadDist(gen);
+            //std::normal_distribution<> loSdelaySpreadDist(MeanDS, StandardDeviationDS);
+            //delaySpread = loSdelaySpreadDist(gen);
 
             //Азимутальный угол Разброс вылета (ASD)
             StandardDeviationASD = 0.18;
             MeanASD = 1.6;
-            std::normal_distribution<> loSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
-            azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            //std::normal_distribution<> loSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
+            //azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
             StandardDeviationASA = (0.12 * log10(1 + fc) + 0.119);
             MeanASA = (-0.19 * log10(1 + fc) + 1.781);
-            std::normal_distribution<> loSAzimuthSpreadArrivalDist(MeanASA, StandardDeviationASA);
-            azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            //std::normal_distribution<> loSAzimuthSpreadArrivalDist(MeanASA, StandardDeviationASA);
+            //azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent
             //Зенитный угол Разброс прихода (ZSA)
             StandardDeviationZSA = (-0.04 * log10(1 + fc) + 0.264);
             MeanZSA = (-0.26 * log10(1 + fc) + 1.44);
-            std::normal_distribution<> loSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
-            zenithSpreadArrival = std::min(loSZenithSpreadArrivalDist(gen), log10(52.0));
+            //std::normal_distribution<> loSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
+            //zenithSpreadArrival = std::min(loSZenithSpreadArrivalDist(gen), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
 
             if (fc < 6.0) {
                 StandardDeviationZSD = (0.13 * log10(1 + 6) + 0.30);
                 MeanZSD = (-1.43 * log10(1 + 6) + 2.228);
-                std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
-                zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
+                //std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
+                //zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             else {
                 StandardDeviationZSD = (0.13 * log10(1 + fc) + 0.30);
                 MeanZSD = (-1.43 * log10(1 + fc) + 2.228);
-                std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
-                zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
+                //std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
+                //zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             /*
             shadowFading = pow(10, shadowFading / 10);
@@ -159,32 +160,33 @@ public:
 
             value << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
             means << MeanSF, MeanK, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
-
-            std::cout << value << "\n";
-            /*
-            losStandardDeviationSF = pow(10, losStandardDeviationSF/10);
-            losStandardDeviationK = pow(10, losStandardDeviationK / 10);
-            losStandardDeviationDS = pow(10, losStandardDeviationDS );
-            losStandardDeviationASD = pow(10, losStandardDeviationASD );
-            losStandardDeviationASA = pow(10, losStandardDeviationASA);
-            losStandardDeviationZSD = pow(10, losStandardDeviationZSD );
-            losStandardDeviationZSA = pow(10, losStandardDeviationZSA);
-            */
+            standardDeviation << StandardDeviationSF, StandardDeviationK, StandardDeviationDS, StandardDeviationASD, StandardDeviationASA, StandardDeviationZSD, StandardDeviationZSA;
             
+            
+
             //SF K DS ASD ASA ZSD ZSA
-            C << StandardDeviationSF * StandardDeviationSF, 0.5 * StandardDeviationSF * StandardDeviationK, -0.8 * StandardDeviationSF * StandardDeviationDS, -0.4 * StandardDeviationSF * StandardDeviationASD, -0.5 * StandardDeviationSF * StandardDeviationASA, 0.2 * StandardDeviationSF * StandardDeviationZSD, 0.3 * StandardDeviationSF * StandardDeviationZSA,
-                0.5 * StandardDeviationK * StandardDeviationSF, StandardDeviationK * StandardDeviationK, -0.5 * StandardDeviationK * StandardDeviationDS, 0.0 * StandardDeviationK * StandardDeviationASD, 0.0 * StandardDeviationK * StandardDeviationASA, 0.0 * StandardDeviationK * StandardDeviationZSD, 0.1 * StandardDeviationK * StandardDeviationZSA,
-                -0.8 * StandardDeviationDS * StandardDeviationSF, -0.5 * StandardDeviationDS * StandardDeviationK, StandardDeviationDS * StandardDeviationDS, 0.6 * StandardDeviationDS * StandardDeviationASD, 0.8 * StandardDeviationDS * StandardDeviationASA, 0.1 * StandardDeviationDS * StandardDeviationZSD, 0.2 * StandardDeviationDS * StandardDeviationZSA,
-                -0.4 * StandardDeviationASD * StandardDeviationSF, 0.0 * StandardDeviationASD * StandardDeviationK, 0.6 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD * StandardDeviationASD, 0.4 * StandardDeviationASD * StandardDeviationASA, 0.5 * StandardDeviationASD * StandardDeviationZSD, 0.0 * StandardDeviationASD * StandardDeviationZSA,
-                -0.5 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationK, 0.8 * StandardDeviationASA * StandardDeviationDS, 0.4 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA * StandardDeviationASA, 0.0 * StandardDeviationASA * StandardDeviationZSD, 0.5 * StandardDeviationASA * StandardDeviationZSA,
-                0.2 * StandardDeviationZSD * StandardDeviationSF, 0.0 * StandardDeviationZSD * StandardDeviationK, 0.1 * StandardDeviationZSD * StandardDeviationDS, 0.5 * StandardDeviationZSD * StandardDeviationASD, 0.0 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD * StandardDeviationZSD, 0.0 * StandardDeviationZSD * StandardDeviationZSA,
-                0.3 * StandardDeviationZSA * StandardDeviationSF, 0.1 * StandardDeviationZSA * StandardDeviationK, 0.2 * StandardDeviationZSA * StandardDeviationDS, 0.0 * StandardDeviationZSA * StandardDeviationASD, 0.5 * StandardDeviationZSA * StandardDeviationASA, 0.0 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA * StandardDeviationZSA;
-
-
-            std::cout << C << std::endl << std::endl;
-
             
-            // Вычисление и проверка главных миноров
+            C << StandardDeviationSF * StandardDeviationSF, 0.5 * StandardDeviationSF * StandardDeviationK, -0.8 * StandardDeviationSF * StandardDeviationDS, -0.4 * StandardDeviationSF * StandardDeviationASD, -0.5 * StandardDeviationSF * StandardDeviationASA, 0.2 * StandardDeviationSF * StandardDeviationZSD, 0.3 * StandardDeviationSF * StandardDeviationZSA,
+                0.5 * StandardDeviationK * StandardDeviationSF, StandardDeviationK* StandardDeviationK, -0.5 * StandardDeviationK * StandardDeviationDS, 0.0 * StandardDeviationK * StandardDeviationASD, 0.0 * StandardDeviationK * StandardDeviationASA, 0.0 * StandardDeviationK * StandardDeviationZSD, 0.1 * StandardDeviationK * StandardDeviationZSA,
+                -0.8 * StandardDeviationDS * StandardDeviationSF, -0.5 * StandardDeviationDS * StandardDeviationK, StandardDeviationDS* StandardDeviationDS, 0.6 * StandardDeviationDS * StandardDeviationASD, 0.8 * StandardDeviationDS * StandardDeviationASA, 0.1 * StandardDeviationDS * StandardDeviationZSD, 0.2 * StandardDeviationDS * StandardDeviationZSA,
+                -0.4 * StandardDeviationASD * StandardDeviationSF, 0.0 * StandardDeviationASD * StandardDeviationK, 0.6 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD* StandardDeviationASD, 0.4 * StandardDeviationASD * StandardDeviationASA, 0.5 * StandardDeviationASD * StandardDeviationZSD, 0.0 * StandardDeviationASD * StandardDeviationZSA,
+                -0.5 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationK, 0.8 * StandardDeviationASA * StandardDeviationDS, 0.4 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA* StandardDeviationASA, 0.0 * StandardDeviationASA * StandardDeviationZSD, 0.5 * StandardDeviationASA * StandardDeviationZSA,
+                0.2 * StandardDeviationZSD * StandardDeviationSF, 0.0 * StandardDeviationZSD * StandardDeviationK, 0.1 * StandardDeviationZSD * StandardDeviationDS, 0.5 * StandardDeviationZSD * StandardDeviationASD, 0.0 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.0 * StandardDeviationZSD * StandardDeviationZSA,
+                0.3 * StandardDeviationZSA * StandardDeviationSF, 0.1 * StandardDeviationZSA * StandardDeviationK, 0.2 * StandardDeviationZSA * StandardDeviationDS, 0.0 * StandardDeviationZSA * StandardDeviationASD, 0.5 * StandardDeviationZSA * StandardDeviationASA, 0.0 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
+            /*
+            C << 1, 0.5 , -0.8 , -0.4 , -0.5, 0.2 , 0.3 ,
+                0.5 , 1, -0.5 , 0.0 , 0.0 , 0.0, 0.1 ,
+                -0.8 , -0.5 , 1, 0.6 , 0.8 , 0.1 , 0.2 ,
+                -0.4 , 0.0, 0.6 , 1, 0.4 , 0.5 , 0.0 ,
+                -0.5 , 0.0 , 0.8 , 0.4 , 1, 0.0 , 0.5 ,
+                0.2 , 0.0 , 0.1 , 0.5 , 0.0 , 1, 0.0 ,
+                0.3 , 0.1 , 0.2 , 0.0 , 0.5 , 0.0 , 1;
+            */
+
+            //std::cout << C << std::endl << std::endl;
+
+
+            /*Вычисление и проверка главных миноров
             for (int i = 1; i <= C.rows(); ++i) {
                 // Получаем верхнюю левую подматрицу размером i x i
                 MatrixXd minor = C.topLeftCorner(i, i);
@@ -204,11 +206,11 @@ public:
                     std::cout << "0 " << std::endl;
                 }
             }
-            
+            */
 
             MatrixXd L;
             L = C.llt().matrixL();
-            std::cout << L << "\n";
+            //std::cout << L << "\n";
 
             // Проверка на положительную определенность
             if (C.llt().info() != Success) {
@@ -216,98 +218,99 @@ public:
                 return;
             }
 
-            // Генерация стандартных нормальных случайных величин
+            
             std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
             std::normal_distribution<double> normDist(0.0, 1.0);
-            
             for (int i = 0; i < 7; ++i) {
                 value(i) = normDist(gen);
             }
 
             // Преобразование случайных величин с помощью матрицы Лапласа
-            
+
             VectorXd value_new = L * value + means;
 
             shadowFading = value_new(0);
             riceanK = value_new(1);
             delaySpread = value_new(2);
-            azimuthSpreadDeparture = std::min((value_new(3)), log10(104.0)); 
+            azimuthSpreadDeparture = std::min((value_new(3)), log10(104.0));
             azimuthSpreadArrival = std::min((value_new(4)), log10(104.0));
             zenithSpreadDeparture = std::min((value_new(5)), log10(52.0));
             zenithSpreadArrival = std::min((value_new(6)), log10(52.0));
-            
+
         }
         else
         {
             VectorXd value(6);
             VectorXd means(6);
+            VectorXd standardDeviation(6);
             MatrixXd C(6, 6);
 
             //Если NLOS:
             //Затенение (SF)
             StandardDeviationSF = 8.03;
             MeanSF = 0;
-            std::normal_distribution<> nLoSshadowFadingDist(MeanSF, StandardDeviationSF);
-            shadowFading = nLoSshadowFadingDist(gen);
+            //std::normal_distribution<> nLoSshadowFadingDist(MeanSF, StandardDeviationSF);
+            //shadowFading = nLoSshadowFadingDist(gen);
 
             // разброс задержки (DS)
             StandardDeviationDS = (0.10 * log10(1 + fc) + 0.055);
             MeanDS = (-0.28 * log10(1 + fc) - 7.173);
-            std::normal_distribution<> nLoSdelaySpreadDist(MeanDS, StandardDeviationDS);
-            delaySpread = nLoSdelaySpreadDist(gen); // Задержка распространения НЛОС
+            //std::normal_distribution<> nLoSdelaySpreadDist(MeanDS, StandardDeviationDS);
+            //delaySpread = nLoSdelaySpreadDist(gen); // Задержка распространения НЛОС
 
             //Азимутальный угол Разброс вылета (ASD)
             StandardDeviationASD = 0.25;
             MeanASD = 1.62;
-            std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
-            azimuthSpreadDeparture = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            //std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
+            //azimuthSpreadDeparture = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
             //Азимутальный угол Разброс прихода (ASA)
             StandardDeviationASA = (0.12 * log10(1 + fc) + 0.059);
             MeanASA = (-0.11 * log10(1 + fc) + 1.863);
-            std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(MeanASA, StandardDeviationASA);
-            azimuthSpreadArrival = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
+            //std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(MeanASA, StandardDeviationASA);
+            //azimuthSpreadArrival = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
 
 
             //Зенитный угол Разброс прихода (ZSA)
             StandardDeviationZSA = (-0.09 * log10(1 + fc) + 0.746);
             MeanZSA = (-0.15 * log10(1 + fc) + 1.387);
-            std::normal_distribution<> nLoSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
-            zenithSpreadArrival = std::min(nLoSZenithSpreadArrivalDist(gen), log10(52.0));
+            //std::normal_distribution<> nLoSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
+            //zenithSpreadArrival = std::min(nLoSZenithSpreadArrivalDist(gen), log10(52.0));
 
             //Зенитный угол Разброс вылета (ZSD)
             StandardDeviationZSD = 0.36;
             MeanZSD = 1.08;
 
-            std::normal_distribution<> nLoSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
-            zenithSpreadDeparture = std::min(nLoSZenithSpreadDepartureDist(gen), log10(52.0));
-
+            //std::normal_distribution<> nLoSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
+            //zenithSpreadDeparture = std::min(nLoSZenithSpreadDepartureDist(gen), log10(52.0));
+            
             value << shadowFading, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
-            means << MeanSF,  MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
+            means << MeanSF, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
+            standardDeviation << StandardDeviationSF,  StandardDeviationDS, StandardDeviationASD, StandardDeviationASA, StandardDeviationZSD, StandardDeviationZSA;
 
             std::cout << value << "\n";
-            /*
-            losStandardDeviationSF = pow(10, losStandardDeviationSF/10);
-            losStandardDeviationK = pow(10, losStandardDeviationK / 10);
-            losStandardDeviationDS = pow(10, losStandardDeviationDS );
-            losStandardDeviationASD = pow(10, losStandardDeviationASD );
-            losStandardDeviationASA = pow(10, losStandardDeviationASA);
-            losStandardDeviationZSD = pow(10, losStandardDeviationZSD );
-            losStandardDeviationZSA = pow(10, losStandardDeviationZSA);
-            */
+            
 
             //SF  DS ASD ASA ZSD ZSA
             C << StandardDeviationSF * StandardDeviationSF, -0.5 * StandardDeviationSF * StandardDeviationDS, 0.0 * StandardDeviationSF * StandardDeviationASD, -0.4 * StandardDeviationSF * StandardDeviationASA, 0.0 * StandardDeviationSF * StandardDeviationZSD, 0.0 * StandardDeviationSF * StandardDeviationZSA,
-                -0.5 * StandardDeviationDS * StandardDeviationSF,  StandardDeviationDS* StandardDeviationDS, 0.4 * StandardDeviationDS * StandardDeviationASD, 0.0 * StandardDeviationDS * StandardDeviationASA, -0.27 * StandardDeviationDS * StandardDeviationZSD, -0.06 * StandardDeviationDS * StandardDeviationZSA,
-                0.0 * StandardDeviationASD * StandardDeviationSF,  0.4 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD * StandardDeviationASD, 0.0 * StandardDeviationASD * StandardDeviationASA, 0.35 * StandardDeviationASD * StandardDeviationZSD, 0.23 * StandardDeviationASD * StandardDeviationZSA,
-                -0.4 * StandardDeviationASA * StandardDeviationSF,  0.0 * StandardDeviationASA * StandardDeviationDS, 0.0 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA * StandardDeviationASA, -0.08 * StandardDeviationASA * StandardDeviationZSD, 0.43 * StandardDeviationASA * StandardDeviationZSA,
-                0.0 * StandardDeviationZSD * StandardDeviationSF,  -0.27 * StandardDeviationZSD * StandardDeviationDS, 0.35 * StandardDeviationZSD * StandardDeviationASD, -0.08 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.42 * StandardDeviationZSD * StandardDeviationZSA,
-                0.0 * StandardDeviationZSA * StandardDeviationSF,  -0.06 * StandardDeviationZSA * StandardDeviationDS, 0.23 * StandardDeviationZSA * StandardDeviationASD, 0.43 * StandardDeviationZSA * StandardDeviationASA, 0.42 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
+                -0.5 * StandardDeviationDS * StandardDeviationSF, StandardDeviationDS* StandardDeviationDS, 0.4 * StandardDeviationDS * StandardDeviationASD, 0.0 * StandardDeviationDS * StandardDeviationASA, -0.27 * StandardDeviationDS * StandardDeviationZSD, -0.06 * StandardDeviationDS * StandardDeviationZSA,
+                0.0 * StandardDeviationASD * StandardDeviationSF, 0.4 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD* StandardDeviationASD, 0.0 * StandardDeviationASD * StandardDeviationASA, 0.35 * StandardDeviationASD * StandardDeviationZSD, 0.23 * StandardDeviationASD * StandardDeviationZSA,
+                -0.4 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationDS, 0.0 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA* StandardDeviationASA, -0.08 * StandardDeviationASA * StandardDeviationZSD, 0.43 * StandardDeviationASA * StandardDeviationZSA,
+                0.0 * StandardDeviationZSD * StandardDeviationSF, -0.27 * StandardDeviationZSD * StandardDeviationDS, 0.35 * StandardDeviationZSD * StandardDeviationASD, -0.08 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.42 * StandardDeviationZSD * StandardDeviationZSA,
+                0.0 * StandardDeviationZSA * StandardDeviationSF, -0.06 * StandardDeviationZSA * StandardDeviationDS, 0.23 * StandardDeviationZSA * StandardDeviationASD, 0.43 * StandardDeviationZSA * StandardDeviationASA, 0.42 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
+            
+            /*
+            C << 1, -0.5 , 0.0 , -0.4 , 0.0 , 0.0 ,
+                -0.5 , 1, 0.4 , 0.0 , -0.27 , -0.06 ,
+                0.0 , 0.4 , 1, 0.0 , 0.35 , 0.23 ,
+                -0.4 , 0.0 , 0.0 , 1, -0.08 , 0.43 ,
+                0.0 , -0.27 , 0.35 , -0.08 , 1 , 0.42 ,
+                0.0 , -0.06 , 0.23 , 0.43 , 0.42 , 1;
+            */
+            //std::cout << C << std::endl << std::endl;
 
-            std::cout << C << std::endl << std::endl;
 
-
-            // Вычисление и проверка главных миноров
+            /* Вычисление и проверка главных миноров
             for (int i = 1; i <= C.rows(); ++i) {
                 // Получаем верхнюю левую подматрицу размером i x i
                 MatrixXd minor = C.topLeftCorner(i, i);
@@ -327,11 +330,11 @@ public:
                     std::cout << "0 " << std::endl;
                 }
             }
-
+            */
 
             MatrixXd L;
             L = C.llt().matrixL();
-            std::cout << L << "\n";
+            //std::cout << L << "\n";
 
             // Проверка на положительную определенность
             if (C.llt().info() != Success) {
@@ -339,10 +342,9 @@ public:
                 return;
             }
 
-            // Генерация стандартных нормальных случайных величин
+            
             std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
             std::normal_distribution<double> normDist(0.0, 1.0);
-            
             for (int i = 0; i < 6; ++i) {
                 value(i) = normDist(gen);
             }
@@ -359,7 +361,7 @@ public:
             zenithSpreadArrival = std::min((value_new(5)), log10(52.0));
 
 
-
+            
 
         }
     }
@@ -372,11 +374,11 @@ public:
     void showParameters() {
         if (los) {
             // Вывод LSP параметров для NLOS
-            std::cout << "SF [dB] : " << shadowFading << ",\nK [dB] : " << riceanK << ",\nDS [log10(DS/1s)] : " << delaySpread <<  ",\nASD [log10(ASA/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] :  " << azimuthSpreadArrival <<  ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
+            std::cout << "SF [dB] : " << shadowFading << ",\nK [dB] : " << riceanK << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASD [log10(ASA/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] :  " << azimuthSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
         }
         else {
             // Вывод LSP параметров для NLOS
-            std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread <<  ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival <<  ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
+            std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
         }
     }
 
@@ -402,7 +404,7 @@ public:
     {}
 
     // Методы для вычисления ДН полей //Vector2d - вектор столбцы с двумя координатами
-    Vector2d FieldPattern(double theta, double phi, double ksi ) const
+    Vector2d FieldPattern(double theta, double phi, double ksi) const
     {
 
         double alpha = bearingAngle;
@@ -411,11 +413,11 @@ public:
 
         //std::cout << alpha << ", " << beta << ", " << gamma;
         // Inverse rotation matrix
-        MatrixXd inv_R(3,3);
+        MatrixXd inv_R(3, 3);
         inv_R <<
-                        cos(alpha) * cos(beta),                                         sin(alpha)* cos(beta),                                    -sin(beta),
-            cos(alpha)* sin(beta)* sin(gamma) - sin(alpha) * cos(gamma),     sin(alpha)* sin(beta)* sin(gamma) + cos(alpha) * cos(gamma),   cos(beta)* sin(gamma),
-            cos(alpha)* sin(beta)* cos(gamma) + sin(alpha) * sin(gamma),     sin(alpha)* sin(beta)* cos(gamma) - cos(alpha) * sin(gamma),   cos(beta)* cos(gamma);
+            cos(alpha) * cos(beta), sin(alpha)* cos(beta), -sin(beta),
+            cos(alpha)* sin(beta)* sin(gamma) - sin(alpha) * cos(gamma), sin(alpha)* sin(beta)* sin(gamma) + cos(alpha) * cos(gamma), cos(beta)* sin(gamma),
+            cos(alpha)* sin(beta)* cos(gamma) + sin(alpha) * sin(gamma), sin(alpha)* sin(beta)* cos(gamma) - cos(alpha) * sin(gamma), cos(beta)* cos(gamma);
         //std::cout << inv_R;
 
         VectorXd xyz(3);
@@ -427,9 +429,9 @@ public:
         double theta_LSC = acos(v.transpose() * inv_R * xyz);
         std::complex<double> temp = u.transpose() * inv_R * xyz;
         //std::cout << temp1;
-        double phi_LSC = atan2(temp.imag(),temp.real());
+        double phi_LSC = atan2(temp.imag(), temp.real());
 
-        
+
 
 
 
@@ -439,7 +441,7 @@ public:
         //std::cout << theta_LSC << ", " << phi_LSC << std::endl;
         ksi = ksi * M_PI / 180;
 
-        
+
 
         // Theta
         // -min(12((Theta-90)/Theta3D)^2, SLA_V) Theta3D = 65 deg SLA_V = 30 dB
@@ -449,7 +451,7 @@ public:
         //-min(12(Phi/Phi3D)^2, A_max) Phi_3D = 65 deg, A_max = 30 dB
         double AhorizontalPowerPattern = (-1) * std::min(12 * (phi_LSC / 65) * (phi_LSC / 65), 30.0);
 
-        
+
 
         double A3D_PowerPattern = 8 - std::min((-1) * (AverticalPowerPattern + AhorizontalPowerPattern), 30.0); // знак "-" в начале формулы
 
@@ -466,7 +468,7 @@ public:
 
     // в fieldPattern - 1 theta, 2 phi
     /*
-    //Переход от LSC в GSC 
+    //Переход от LSC в GSC
     Eigen::Vector2d transformationFromLCStoGCS(double thetaAngle, double phiAngle, double bearingAngle, double downtiltAngle, double slantAngle, Eigen::Vector2d& fieldPattern) const
     {
         Eigen::Vector2d transformFieldPattern;
@@ -559,13 +561,14 @@ double calculateDistance(const UserTerminal& a, const UserTerminal& b)
 double los_r_tau = 3.6;
 double nlos_r_tau = 3.0;
 
-std::vector<double> generateClusterDelays(bool los, double losdelaySpread, double nlosdelaySpread, double riceanK)
+std::vector<double> generateClusterDelays(bool los, double delaySpread,  double riceanK)
 {
-    losdelaySpread = pow(10, losdelaySpread);
-    nlosdelaySpread = pow(10, nlosdelaySpread);
+    delaySpread = pow(10, delaySpread);
 
-    std::random_device rn;
-    std::mt19937 gen(rn());
+    
+
+    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
+    
 
     std::vector<double> delays_tau;
     double delay_tau_n;
@@ -575,7 +578,7 @@ std::vector<double> generateClusterDelays(bool los, double losdelaySpread, doubl
         for (int n = 0; n < 15; ++n)
         {
             double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
-            delay_tau_n = -1 * los_r_tau * log(Xn) * losdelaySpread;
+            delay_tau_n = -1 * los_r_tau * log(Xn) * delaySpread;
             delays_tau.push_back(delay_tau_n);
         }
     }
@@ -583,7 +586,7 @@ std::vector<double> generateClusterDelays(bool los, double losdelaySpread, doubl
         for (int n = 0; n < 19; ++n)
         {
             double Xn = std::uniform_real_distribution<>(0.0, 1.0)(gen); // Xn ~ uniform(0,1)
-            delay_tau_n = -1 * nlos_r_tau * log(Xn) * nlosdelaySpread;
+            delay_tau_n = -1 * nlos_r_tau * log(Xn) * delaySpread;
             delays_tau.push_back(delay_tau_n);
         }
 
@@ -612,59 +615,50 @@ std::vector<double> generateClusterDelays(bool los, double losdelaySpread, doubl
 
 //_______________________________________________STEP_6____________________________________________________//
 //__________________________________Генерация мощностей кластеров__________________________________________//
-std::vector<double> generateClusterPowers(bool los, const std::vector<double>& clusterDelays, double riceanK, double delaySpread)
+std::vector<double> generateClusterPowers(bool los, const std::vector<double>& clusterDelays, double delaySpread)
 {
+    
     delaySpread = pow(10, delaySpread);
-    delaySpread = pow(10, delaySpread);
-    riceanK = pow(10, riceanK / 10); // перевод из дб в линейный масштаб
+    
+
 
     std::vector<double> clusterPowers(clusterDelays.size());
-    double power;
+    double power = 0.0;
     double maxPower = 0.0;
     double sumclusterPowers = 0.0;
-    double losPower = 0.0;
-
+    
     // Генерация случайных значений для затенения кластеров 
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
 
     for (size_t n = 0; n < clusterDelays.size(); ++n) {
 
         if (los) {
             std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp((-1) * clusterDelays[n] * (los_r_tau - 1) / (los_r_tau * delaySpread)) * pow(10, (shadowing / 10));
+            power = exp(((-1) * clusterDelays[n] * (los_r_tau - 1))  * pow(10, ( (-1) * shadowing / 10)) / (los_r_tau * delaySpread));
         }
         else {
             std::normal_distribution<> shadowFadingDist(0, 9); // is the per cluster shadowing term in [dB] NLOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp((-1) * clusterDelays[n] * (nlos_r_tau - 1) / (nlos_r_tau * delaySpread)) * pow(10, (shadowing / 10));
+            power = exp(((-1) * clusterDelays[n] * (nlos_r_tau - 1))  * pow(10, ( (-1) * shadowing / 10)) / (nlos_r_tau * delaySpread));
         }
         clusterPowers[n] = power;
     }
 
 
     // Нормализация мощностей кластеров
-    maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
+    
     for (auto& n : clusterPowers) sumclusterPowers += n;
 
-    if (los) {
-        for (size_t n = 0; n < clusterPowers.size(); ++n) {
-            clusterPowers[n] = (1 / (riceanK + 1)) * clusterPowers[n] / sumclusterPowers;
-        }
-        clusterPowers.insert(clusterPowers.begin(), (riceanK / (riceanK + 1)));
+    
+    for (size_t n = 0; n < clusterPowers.size(); ++n) {
+        clusterPowers[n] = clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
     }
-    else
-    {
-        for (size_t n = 0; n < clusterPowers.size(); ++n) {
-            clusterPowers[n] = clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
-        }
-    }
-
+    maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
 
     std::vector<double> clusterPowers_main;
 
-    double threshold = maxPower / sumclusterPowers * 0.00316; // Порог для удаления
+    double threshold = maxPower * 0.00316; // Порог для удаления
     for (size_t n = 0; n < clusterPowers.size(); ++n) {
         if (clusterPowers[n] > threshold)
         {
@@ -674,7 +668,6 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
         else { indicesToDelete.push_back(n); }
     }
 
-    //std::sort(clusterPowers_main.begin(), clusterPowers_main.end(), std::greater<double>());
     return clusterPowers_main; // Возвращаем нормализованные мощности кластеров
 };
 
@@ -699,8 +692,7 @@ Eigen::MatrixXd generatePhiAOA(bool los, const std::vector<double>& clusterPower
 
     losPhiAOA = losPhiAOA * 180 / M_PI;
     AzimuthSpreadArrival = pow(10, AzimuthSpreadArrival);
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
 
     double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
     //n - должен быть размер кластера задержек
@@ -713,8 +705,8 @@ Eigen::MatrixXd generatePhiAOA(bool los, const std::vector<double>& clusterPower
     if (los) // случай LOS
     {
         std::vector<double> Phi_n_AOA(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_AOA(clusterPowers_main.size() , 20);
-        for (int n = 0; n < clusterPowers_main.size() ; n++)
+        Eigen::MatrixXd Phi_n_m_AOA(clusterPowers_main.size(), 20);
+        for (int n = 0; n < clusterPowers_main.size(); n++)
         {
             if (los)
             {
@@ -768,8 +760,7 @@ Eigen::MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPower
 
     losPhiAOD = losPhiAOD * 180 / M_PI;
     AzimuthSpreadDeparture = pow(10, AzimuthSpreadDeparture);
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
 
     double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
     //n - должен быть размер кластера задержек
@@ -781,9 +772,9 @@ Eigen::MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPower
 
     if (los) // случай LOS
     {
-        std::vector<double> Phi_n_AOD(clusterPowers_main.size() );
-        Eigen::MatrixXd Phi_n_m_AOD(clusterPowers_main.size() , 20);
-        for (int n = 0; n < clusterPowers_main.size() ; n++)
+        std::vector<double> Phi_n_AOD(clusterPowers_main.size());
+        Eigen::MatrixXd Phi_n_m_AOD(clusterPowers_main.size(), 20);
+        for (int n = 0; n < clusterPowers_main.size(); n++)
         {
             if (los)
             {
@@ -837,8 +828,7 @@ Eigen::MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPow
 
     losPhiZOA = losPhiZOA * 180 / M_PI;
     ZenithSpreadArrival = pow(10, ZenithSpreadArrival);
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
 
     double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
     //n - должен быть размер кластера задержек
@@ -850,9 +840,9 @@ Eigen::MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPow
 
     if (los) // случай LOS
     {
-        std::vector<double> Phi_n_ZOA(clusterPowers_main.size() );
-        Eigen::MatrixXd Phi_n_m_ZOA(clusterPowers_main.size() , 20);
-        for (int n = 0; n < clusterPowers_main.size() ; n++)
+        std::vector<double> Phi_n_ZOA(clusterPowers_main.size());
+        Eigen::MatrixXd Phi_n_m_ZOA(clusterPowers_main.size(), 20);
+        for (int n = 0; n < clusterPowers_main.size(); n++)
         {
             if (los)
             {
@@ -906,8 +896,7 @@ Eigen::MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPow
 
     losPhiZOD = losPhiZOD * 180 / M_PI;
     ZenithSpreadDeparture = pow(10, ZenithSpreadDeparture);
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
 
     double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
     //n - должен быть размер кластера задержек
@@ -920,8 +909,8 @@ Eigen::MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPow
     if (los) // случай LOS
     {
         std::vector<double> Phi_n_ZOD(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_ZOD(clusterPowers_main.size() , 20);
-        for (int n = 0; n < clusterPowers_main.size() ; n++)
+        Eigen::MatrixXd Phi_n_m_ZOD(clusterPowers_main.size(), 20);
+        for (int n = 0; n < clusterPowers_main.size(); n++)
         {
             if (los)
             {
@@ -970,7 +959,7 @@ Eigen::MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPow
     }
 }
 //_________________________________________A_1________________________________________________________//
-std::vector<double> calculateAngularSpreadandMeanAngles(bool los , const std::vector<double>& clasterPowers,  MatrixXd& AOD,  MatrixXd& AOA,  MatrixXd& ZOD,  MatrixXd& ZOA ) {
+std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vector<double>& clasterPowers, MatrixXd& AOD, MatrixXd& AOA, MatrixXd& ZOD, MatrixXd& ZOA) {
     std::vector<double> ASandMeanAnglesforAOD_AOA_ZOD_ZOA;
 
     AOD = AOD * M_PI / 180;
@@ -978,7 +967,7 @@ std::vector<double> calculateAngularSpreadandMeanAngles(bool los , const std::ve
     ZOD = ZOD * M_PI / 180;
     ZOA = ZOA * M_PI / 180;
 
-    std::complex<double> weighted_sumAOA(0.0, 0.0); 
+    std::complex<double> weighted_sumAOA(0.0, 0.0);
     std::complex<double> weighted_sumAOD(0.0, 0.0);
     std::complex<double> weighted_sumZOA(0.0, 0.0);
     std::complex<double> weighted_sumZOD(0.0, 0.0);
@@ -987,7 +976,7 @@ std::vector<double> calculateAngularSpreadandMeanAngles(bool los , const std::ve
     // Вычисление взвешенной суммы комплексных экспонент
     for (int n = 0; n < clasterPowers.size(); ++n) {
         if (n == 0 && los) { continue; }
-        for (int m = 0; m < 20; ++m) {   
+        for (int m = 0; m < 20; ++m) {
             weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n, m)));
             weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n, m)));
             weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n, m)));
@@ -998,7 +987,7 @@ std::vector<double> calculateAngularSpreadandMeanAngles(bool los , const std::ve
     }
 
     // Вычисление углового рассеяния
-    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back( sqrt( - 2.0 * std::log(std::abs(weighted_sumAOD / weighted_sumPowers))));
+    ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumAOD / weighted_sumPowers))));
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumAOA / weighted_sumPowers))));
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumZOD / weighted_sumPowers))));
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumZOA / weighted_sumPowers))));
@@ -1178,14 +1167,14 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
         double ksi_tx;
         int pair = 0;
         for (int u = 0; u < 16; ++u) {
-            if(u < 8){  ksi_rx = 45; }
-            else{  ksi_rx = -45; }
+            if (u < 8) { ksi_rx = 45; }
+            else { ksi_rx = -45; }
             for (int s = 0; s < 16; ++s) {
-                if (s < 8) {  ksi_tx = 45; }
+                if (s < 8) { ksi_tx = 45; }
                 else { ksi_tx = -45; }
                 for (int m = 0; m < 20; ++m) {
                     if (n > 1) {
-                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
                         Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
@@ -1221,7 +1210,7 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
                     }
                     else if (n < 2) {
-                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
                         Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
@@ -1308,8 +1297,8 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                 else { ksi_tx = -45; }
                 for (int m = 0; m < 20; ++m) {
                     if (n > 2) {
-                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
-                        Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m),ksi_rx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
+                        Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                         //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -1343,7 +1332,7 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
                     }
                     else if (n > 0 && n < 3) {
-                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m),ksi_tx);
+                        Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
                         Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
                         //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
@@ -1390,8 +1379,8 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                 }
 
                 if (n == 0) {
-                    Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0),0.0);
-                    Eigen::Vector2d F_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0),0.0);
+                    Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), 0.0);
+                    Eigen::Vector2d F_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), 0.0);
 
                     //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
                     //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
@@ -1419,7 +1408,7 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                     // Вместо сложной операции, используя std::complex<double>
                     std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
                     std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
-                    std::complex<double> exp_d3D = exp(j) * exp( - 2 * M_PI * calculateDistance(transmitter, receiver) / (1000 * 0.1));
+                    std::complex<double> exp_d3D = exp(j) * exp(-2 * M_PI * calculateDistance(transmitter, receiver) / ( 0.1));
 
                     std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx * exp_d3D;
 
@@ -1461,7 +1450,7 @@ int main() {
         double bearing = (std::rand() % 360) * M_PI / 180.0;
         double downtilt = (rand() % 90) * M_PI / 180.0; // Угол наклона
         double slant = (rand() % 90) * M_PI / 180.0; // Угол наклона
-        
+
         UserTerminal newUT(i, 0, 0, userHeight, bearing, downtilt, slant);
         bool isValidPosition = false;
 
@@ -1510,7 +1499,7 @@ int main() {
         std::cout << "LOS ZOD, AOD: (" << losThetaZOD << ", " << losPhiAOD << "),\n"
             << "LOS ZOA, AOA: (" << losThetaZOA << ", " << losPhiAOA << ")\n\n";
 
-        Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD,45);
+        Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD, 45);
         std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] << std::endl;
         /*
         Eigen::Vector2d txAntennaPattern = transmitter.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F_tx);
@@ -1518,7 +1507,7 @@ int main() {
         std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << txAntennaPattern[0] << " ; " << txAntennaPattern[1] << " }" << std::endl << std::endl;
         */
 
-        Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA,45);
+        Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA, 45);
         std::cout << "{F_rx_theta,F_rx_pfi} : " << F_rx[0] << " ; " << F_rx[1] << std::endl;
         /*
         Eigen::Vector2d rxAntennaPattern = receiver.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F_rx);
@@ -1578,46 +1567,36 @@ int main() {
 
         //______________STEP_5_______________//
         // Генерация задержек кластеров
-        std::vector<double> clusterDelays = generateClusterDelays(los, lsp.delaySpread, lsp.delaySpread, lsp.riceanK); // Передаем delaySpread из LSP
-        if (los) { clusterDelays.insert(clusterDelays.begin(), 0); }
-        std::cout << "Cluster delays for User " << transmitter.id << " and User " << receiver.id << ":\n\n";
-        int i = 1;
-        for (const auto& delay : clusterDelays) {
-            std::cout << i << "-delay: " << delay ;
-            if(los && i == 1){ std::cout << " - LOS" ;}
-            std::cout << "\n";
-            i++;
-        }
-        std::cout << std::endl;
-
+        std::vector<double> clusterDelays = generateClusterDelays(los, lsp.delaySpread,  lsp.riceanK); // Передаем delaySpread из LSP
         
-
         //_____________STEP_6_______________//
         // Генерация мощностей кластеров
-        std::vector<double> clusterPowers = generateClusterPowers(los, clusterDelays, lsp.riceanK, lsp.delaySpread);
+        std::vector<double> clusterPowers = generateClusterPowers(los, clusterDelays, lsp.delaySpread);
 
-        std::cout << "Cluster powers for User " << transmitter.id << " and User " << receiver.id << ": ";
-        for (const auto& power : clusterPowers) {
-            std::cout << power << " ";
-        }
-        std::cout << std::endl << std::endl;
-
-        //оставляю лишь нужные задержки 
-        if (los) { clusterDelays.insert(clusterDelays.begin(), 0); }
+        //оставляю лишь нужные задержки  и сортирую их с мощностями 
         for (int i = indicesToDelete.size() - 1; i >= 0; --i) {
             clusterDelays.erase(clusterDelays.begin() + indicesToDelete[i]);
         }
         indicesToDelete.clear();
-
-        // sort
         std::pair<std::vector<double>, std::vector<double>> sortClusterPowers_ClusterDelays = sort_with_indices(clusterPowers, clusterDelays);
         clusterPowers = sortClusterPowers_ClusterDelays.first;
         clusterDelays = sortClusterPowers_ClusterDelays.second;
 
+        std::vector<double> clusterPowersWithScalingFactors = clusterPowers;
+        if (los) {
+
+            for (size_t n = 0; n < clusterPowersWithScalingFactors.size(); ++n) {
+                clusterPowersWithScalingFactors[n] *= (1 / (pow(10, lsp.riceanK) + 1))  ;
+            }
+            clusterPowersWithScalingFactors[0] += (pow(10, lsp.riceanK) / (pow(10, lsp.riceanK) + 1));
+        }
+
+
+        // Выводы значений 
         std::cout << "Cluster delays for User " << transmitter.id << " and User " << receiver.id << ":\n\n";
         int j = 1;
         for (const auto& delay : clusterDelays) {
-            std::cout << "-delay for power #"<< j << " : " << delay << "\n";
+            std::cout << "-delay for power #" << j << " : " << delay << "\n";
             j++;
         }
         std::cout << std::endl;
@@ -1628,13 +1607,19 @@ int main() {
         }
         std::cout << std::endl << std::endl;
 
+        std::cout << "Cluster powers with scaling factors for User " << transmitter.id << " and User " << receiver.id << ": ";
+        for (const auto& powerWithScalingFactors : clusterPowersWithScalingFactors) {
+            std::cout << powerWithScalingFactors << " ";
+        }
+        std::cout << std::endl << std::endl;
+
         //_____________STEP_7_______________//
 
         //Generate arrival angles and departure angles for both azimuth and elevation
-        Eigen::MatrixXd PhiAOD = generatePhiAOD(los, clusterPowers, lsp.azimuthSpreadDeparture, lsp.riceanK, losPhiAOD);
-        Eigen::MatrixXd PhiAOA = generatePhiAOA(los, clusterPowers, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA);
-        Eigen::MatrixXd ThetaZOD = generateThetaZOD(los, clusterPowers, lsp.zenithSpreadDeparture, lsp.riceanK, losThetaZOD);
-        Eigen::MatrixXd ThetaZOA = generateThetaZOA(los, clusterPowers, lsp.zenithSpreadArrival, lsp.riceanK, losThetaZOA);
+        Eigen::MatrixXd PhiAOD = generatePhiAOD(los, clusterPowersWithScalingFactors, lsp.azimuthSpreadDeparture, lsp.riceanK, losPhiAOD);
+        Eigen::MatrixXd PhiAOA = generatePhiAOA(los, clusterPowersWithScalingFactors, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA);
+        Eigen::MatrixXd ThetaZOD = generateThetaZOD(los, clusterPowersWithScalingFactors, lsp.zenithSpreadDeparture, lsp.riceanK, losThetaZOD);
+        Eigen::MatrixXd ThetaZOA = generateThetaZOA(los, clusterPowersWithScalingFactors, lsp.zenithSpreadArrival, lsp.riceanK, losThetaZOA);
 
         if (los) {
             std::cout << "PhiAOD for UT transmitter " << transmitter.id << ": \n";
@@ -1684,19 +1669,19 @@ int main() {
         }
 
         //___________A1___A2___________//
-        std::vector<double> AS = calculateAngularSpreadandMeanAngles(los,clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA);
+        std::vector<double> AS = calculateAngularSpreadandMeanAngles(los, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA);
         std::cout << "AS for AOD | AOA | ZOD | ZOA : ";
         for (size_t i = 0; i < 4 && i < AS.size(); ++i) {
             std::cout << AS[i] << " ";
         }
         std::cout << std::endl;
 
-        std::cout << "Mean Angles for AOD | AOA | ZOD | ZOA : " <<  std::endl;
+        std::cout << "Mean Angles for AOD | AOA | ZOD | ZOA : " << std::endl;
         for (size_t i = 4; i < 8 && i < AS.size(); ++i) {
             std::cout << AS[i] << " ";
         }
         std::cout << std::endl << std::endl;
-       
+
 
 
 
