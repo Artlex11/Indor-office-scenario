@@ -1124,13 +1124,69 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
     return channelCoefficients_u_s_n;
 }
 
+//_________________________________________________STEP_2__________________________________________//
+bool generateLOSorNLOS(double distance) {
+    UniformGenerator<double> pDist(0.0, 1.0); // равномерное распределение вероятности LOS (подброс монетка)
+    double P_LOS;
+    bool los;
+    double p; // случайно сгенерированная вероятность (порог LOS)
+    if (distance <= 5) {
+        P_LOS = 1;
+        los = true;
+        std::cout << "Link - LOS" << std::endl;
+    }
+    else if (distance > 5 && distance <= 49) {
+        P_LOS = exp(-(distance - 5) / 70.8);
+        p = pDist();
+        // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+        if (P_LOS > p) {
+            los = true;
+            std::cout << "Link - LOS" << std::endl;
+        }
+        else {
+            los = false;
+            std::cout <<  "Link - NLOS" << std::endl;
+        }
+    }
+    else {
+        P_LOS = exp(-(distance - 49) / 211.7) * 0.54;
+        p = pDist();
+        // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+        if (P_LOS > p) {
+            los = true;
+            std::cout <<  "Link - LOS" << std::endl;
+        }
+        else {
+            los = false;
+            std::cout << "Link - NLOS" << std::endl;
+        }
+    }
+    return los;
+}
+
+//_________________________________________________STEP_3__________________________________________//
+double calculatePathLoss(bool los, double distance, double nu) {
+    double path_loss;
+    if (los)
+    {
+        path_loss = 32.4 + 17.3 * log10(distance) + 20 * log10(nu);
+    }
+    else
+    {
+        path_loss = 38.3 * log10(distance) + 17.30 + 24.9 * log10(nu);
+    }
+    return path_loss;
+}
+
 //____________________________________________Основная_Программа___________________________________________//
 int main() {
     // Параметры комнаты 
     double roomLength = 120.0; // Длина комнаты
     double roomWidth = 50.0;    // Ширина комнаты 
     double roomHeight = 3.0;    // Высота комнаты 
-    double wavelength = 0.1;     // Длина волны 
+    
+    double nu = 3.0; // частота в ГГц
+    double wavelength = 30000000 / nu;     // Длина волны 
 
     // Создаем пользователей 
     std::vector<UserTerminal> users;
@@ -1206,59 +1262,15 @@ int main() {
     
         //_______________________________________STEP_2________________________________________//
         // Вычисление расстояния между передатчиком и приемником
-        double d = calculateDistance(transmitter, receiver);
-        std::cout << "Distance between transmitter and receiver is " << d << std::endl;
+        double distance_tx_rx = calculateDistance(transmitter, receiver);
+        std::cout << "Distance between transmitter and receiver is " << distance_tx_rx << std::endl;
 
-        UniformGenerator<double> pDist(0.0, 1.0); // равномерное распределение вероятности LOS (подброс монетка)
+        //Определяем вид линка
+        bool los =  generateLOSorNLOS(distance_tx_rx);
 
-        double P_LOS;
-        bool los;
-        double p; // случайно сгенерированная вероятность (порог LOS)
-        if (d <= 5) {
-            P_LOS = 1;
-            los = true;
-            std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
-        }
-        else if (d > 5 && d <= 49) {
-            P_LOS = exp(-(d - 5) / 70.8);
-            p = pDist();
-            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
-            if (P_LOS > p) {
-                los = true;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " > " << p << ", Link - LOS" << std::endl;
-            }
-            else {
-                los = false;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " < " << p << ", Link - NLOS" << std::endl;
-            }
-        }
-        else {
-            P_LOS = exp(-(d - 49) / 211.7) * 0.54;
-            p = pDist();
-            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
-            if (P_LOS > p) {
-                los = true;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " > " << p << ", Link - LOS" << std::endl;
-            }
-            else {
-                los = false;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " < " << p << ", Link - NLOS" << std::endl;
-            }
-        }
         //__STEP3__//
-        // Вычисление Pathloss_LOS для каждой пары
-        double path_loss;
-        double nu = 3.0; // частота в ГГц
-        if (los)
-        {
-            path_loss = 32.4 + 17.3 * log10(d) + 20 * log10(nu);
-            std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss << std::endl << std::endl;
-        }
-        else
-        {
-            path_loss = 38.3 * log10(d) + 17.30 + 24.9 * log10(nu);
-            std::cout << "Pathloss in NLOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss << std::endl << std::endl;
-        }
+        double path_loss = calculatePathLoss(los, distance_tx_rx,nu);
+        std::cout << "PathLoss[dB]  = " << path_loss << std::endl << std::endl;
 
         //_________________________________________________STEP_4__________________________________________//
         std::cout << "\nLSP for LOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n";
