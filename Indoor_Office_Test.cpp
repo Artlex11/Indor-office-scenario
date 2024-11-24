@@ -35,12 +35,13 @@ struct GaussGenerator
     std::normal_distribution<double> distribution_;
 };
 
+template<typename T>
 struct UniformGenerator
 {
-    UniformGenerator(double min, double max, std::uint32_t seed)
+    UniformGenerator(T min, T max, std::uint32_t seed)
         : engine_(seed), distribution_(min, max) {}
 
-    UniformGenerator(double min, double max)
+    UniformGenerator(T min, T max)
         : distribution_(min, max)
     {
         using namespace std;
@@ -52,10 +53,11 @@ struct UniformGenerator
         engine_.seed(seeds);
     }
 
-    double operator()() { return distribution_(engine_); }
+    T operator()() { return distribution_(engine_); }
 
-    std::mt19937 engine_;  
-    std::uniform_real_distribution<double> distribution_; 
+private:
+    std::mt19937 engine_;
+    std::conditional_t<std::is_integral<T>::value, std::uniform_int_distribution<T>, std::uniform_real_distribution<T>> distribution_;
 };
 
 
@@ -537,8 +539,8 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
 
     AOAorAOD = AOAorAOD * 180 / M_PI;
     ASAorASD = pow(10, ASAorASD);
-    GaussGenerator YnDist(0, (ASAorASD / 7) * (ASAorASD / 7));
-    UniformGenerator XnDist(-1, 1);
+    GaussGenerator YnDist(0.0, (ASAorASD / 7) * (ASAorASD / 7));
+    UniformGenerator<double> XnDist(-1.0, 1.0);
 
     double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
     
@@ -604,7 +606,7 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
     ZOAorZOD = ZOAorZOD * 180 / M_PI;
     ZSAorZSD = pow(10, ZSAorZSD);
     GaussGenerator YnDist(0, (ZSAorZSD / 7) * (ZSAorZSD / 7));
-    UniformGenerator XnDist(-1, 1);
+    UniformGenerator<double> XnDist(-1.0, 1.0);
 
     double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
     //n - должен быть размер кластера задержек
@@ -833,7 +835,7 @@ Eigen::MatrixXd generateXPR(bool los, const std::vector<double>& clusterPowers) 
 //_________________________________Функция_для_генерации_случайных_начальных_фаз___________________________//
 Eigen::MatrixXd generateInitialRandomPhases(std::vector<double>& clusterPowers)
 {
-    UniformGenerator phaseDist(-M_PI, M_PI); // Распределение фаз от -π до π
+    UniformGenerator<double> phaseDist(-M_PI, M_PI); // Распределение фаз от -π до π
 
     Eigen::MatrixXd initialRandomPhases(clusterPowers.size(), 80);
 
@@ -1128,14 +1130,12 @@ int main() {
     double roomLength = 120.0; // Длина комнаты
     double roomWidth = 50.0;    // Ширина комнаты 
     double roomHeight = 3.0;    // Высота комнаты 
-    double wavelength = 0.3;     // Длина волны 
+    double wavelength = 0.1;     // Длина волны 
 
     // Создаем пользователей 
     std::vector<UserTerminal> users;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> xDist(0.0, roomLength);
-    std::uniform_real_distribution<> yDist(0.0, roomWidth);
+    UniformGenerator<double> xDist(0.0, roomLength);
+    UniformGenerator<double> yDist(0.0, roomWidth);
     double userHeight = 1.0; // Высота пользователей 
 
     for (int i = 1; i <= 12; ++i) {
@@ -1148,8 +1148,8 @@ int main() {
         bool isValidPosition = false;
 
         while (!isValidPosition) {
-            newUT.x = xDist(gen);
-            newUT.y = yDist(gen);
+            newUT.x = xDist();
+            newUT.y = yDist();
 
             // Проверяем расстояние до всех существующих пользователей
             isValidPosition = true; // Предполагаем, что позиция валидна
@@ -1164,15 +1164,20 @@ int main() {
     }
 
     // Выбор пар пользователей для передачи
-    std::uniform_int_distribution<> userDist(0, users.size() - 1);
+    
+    UniformGenerator<int> userDist(0, users.size() - 1);
     std::set<std::pair<int, int>> selectedPairs;
+    std::set<int> usedUsers;
 
     while (selectedPairs.size() < 6) {
-        int user1 = userDist(gen);
-        int user2 = userDist(gen);
+        int user1 = userDist();
+        int user2 = userDist();
 
-        if (user1 != user2) {
+        // Убедимся, что оба пользователя не использованы и не равны друг другу
+        if (user1 != user2 && usedUsers.find(user1) == usedUsers.end() && usedUsers.find(user2) == usedUsers.end()) {
             selectedPairs.emplace(std::min(user1, user2), std::max(user1, user2));
+            usedUsers.insert(user1);
+            usedUsers.insert(user2);
         }
     }
 
@@ -1198,13 +1203,13 @@ int main() {
         // Элементы антенны
         Eigen::MatrixXd d_tx = transmitter.generateAntennaElements();
         std::cout << "d_tx :\n" << d_tx << std::endl << std::endl;
-
+    
         //_______________________________________STEP_2________________________________________//
         // Вычисление расстояния между передатчиком и приемником
         double d = calculateDistance(transmitter, receiver);
         std::cout << "Distance between transmitter and receiver is " << d << std::endl;
 
-        std::uniform_real_distribution<> pDist(0.0, 1.0); // равномерное распределение вероятности LOS (подброс монетка)
+        UniformGenerator<double> pDist(0.0, 1.0); // равномерное распределение вероятности LOS (подброс монетка)
 
         double P_LOS;
         bool los;
@@ -1216,7 +1221,7 @@ int main() {
         }
         else if (d > 5 && d <= 49) {
             P_LOS = exp(-(d - 5) / 70.8);
-            p = pDist(gen);
+            p = pDist();
             // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
             if (P_LOS > p) {
                 los = true;
@@ -1229,7 +1234,7 @@ int main() {
         }
         else {
             P_LOS = exp(-(d - 49) / 211.7) * 0.54;
-            p = pDist(gen);
+            p = pDist();
             // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
             if (P_LOS > p) {
                 los = true;
