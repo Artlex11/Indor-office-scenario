@@ -8,9 +8,56 @@
 #include <algorithm> 
 #include <Eigen/Dense>
 #include <chrono>
+#include <thread>
 
 using namespace Eigen;
-// Создание пары векторов
+
+struct GaussGenerator
+{
+    GaussGenerator(double mean, double stddev, std::uint32_t seed)
+        : engine_(seed), distribution_(mean, stddev) {}
+
+    GaussGenerator(double mean, double stddev)
+        : distribution_(mean, stddev)
+    {
+        using namespace std;
+        seed_seq seeds{
+            (uint64_t)chrono::high_resolution_clock::now().time_since_epoch().count(),
+            (uint64_t)chrono::system_clock::now().time_since_epoch().count(),
+            (uint64_t)hash<thread::id>{}(this_thread::get_id()),
+        };
+        engine_.seed(seeds);
+    }
+
+    double operator()() { return distribution_(engine_); }
+
+    std::mt19937 engine_;
+    std::normal_distribution<double> distribution_;
+};
+
+struct UniformGenerator
+{
+    UniformGenerator(double min, double max, std::uint32_t seed)
+        : engine_(seed), distribution_(min, max) {}
+
+    UniformGenerator(double min, double max)
+        : distribution_(min, max)
+    {
+        using namespace std;
+        seed_seq seeds{
+            (uint64_t)chrono::high_resolution_clock::now().time_since_epoch().count(),
+            (uint64_t)chrono::system_clock::now().time_since_epoch().count(),
+            (uint64_t)hash<thread::id>{}(this_thread::get_id()),
+        };
+        engine_.seed(seeds);
+    }
+
+    double operator()() { return distribution_(engine_); }
+
+    std::mt19937 engine_;  
+    std::uniform_real_distribution<double> distribution_; 
+};
+
 
 static std::pair<std::vector<double>, std::vector<double>> sort_with_indices(const std::vector<double>& vector1, const std::vector<double>& vector2)
 {
@@ -44,13 +91,6 @@ static std::pair<std::vector<double>, std::vector<double>> sort_with_indices(con
 
 std::vector<int> indicesToDelete;
 
-//______Функция_для_генерации_случайных_значений_x_по_нормальному_распределению___________//
-double generateNormalRandom(double mean, double stddev, std::mt19937& gen)
-{
-    std::normal_distribution<double> dis(mean, stddev);
-    return dis(gen); // Генерируем случайное значение по нормальному распределению
-}
-
 //_________________________Класс_для_STEP_4_Генерация_LSP______________________________________//
 class LargeScaleParameters {
 public:
@@ -67,11 +107,6 @@ public:
     // Конструктор для лос
     LargeScaleParameters(bool losvalue, double fcvalue) : los(losvalue), fc(fcvalue)
     {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-
-
-
         double StandardDeviationSF;
         double StandardDeviationK;
         double StandardDeviationDS;
@@ -92,80 +127,41 @@ public:
         {
             VectorXd value(7);
             VectorXd means(7);
-            VectorXd standardDeviation(7);
             MatrixXd C(7, 7);
 
             //Если LOS :
             //Затемнение SF
             StandardDeviationSF = 3;
             MeanSF = 0;
-            //std::normal_distribution<> loSshadowFadingDist(MeanSF, StandardDeviationSF);
-            //shadowFading = loSshadowFadingDist(gen);
-
             //К-фактор (K)
             StandardDeviationK = 4;
             MeanK = 7;
-            //std::normal_distribution<> riceanKDist0(MeanK, StandardDeviationK);
-            //riceanK = (riceanKDist0(gen));
-
             // разброс задержки (DS)
             StandardDeviationDS = 0.18;
             MeanDS = (-0.01 * log10(1 + fc) - 7.692);
-            //std::normal_distribution<> loSdelaySpreadDist(MeanDS, StandardDeviationDS);
-            //delaySpread = loSdelaySpreadDist(gen);
-
             //Азимутальный угол Разброс вылета (ASD)
             StandardDeviationASD = 0.18;
             MeanASD = 1.6;
-            //std::normal_distribution<> loSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
-            //azimuthSpreadDeparture = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
             //Азимутальный угол Разброс прихода (ASA)
             StandardDeviationASA = (0.12 * log10(1 + fc) + 0.119);
             MeanASA = (-0.19 * log10(1 + fc) + 1.781);
-            //std::normal_distribution<> loSAzimuthSpreadArrivalDist(MeanASA, StandardDeviationASA);
-            //azimuthSpreadArrival = std::min((loSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
-
-            //For frequencies below 6 GHz, use fc = 6 when determining the values of the frequency-dependent
             //Зенитный угол Разброс прихода (ZSA)
             StandardDeviationZSA = (-0.04 * log10(1 + fc) + 0.264);
             MeanZSA = (-0.26 * log10(1 + fc) + 1.44);
-            //std::normal_distribution<> loSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
-            //zenithSpreadArrival = std::min(loSZenithSpreadArrivalDist(gen), log10(52.0));
-
             //Зенитный угол Разброс вылета (ZSD)
-
             if (fc < 6.0) {
                 StandardDeviationZSD = (0.13 * log10(1 + 6) + 0.30);
                 MeanZSD = (-1.43 * log10(1 + 6) + 2.228);
-                //std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
-                //zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
             else {
                 StandardDeviationZSD = (0.13 * log10(1 + fc) + 0.30);
                 MeanZSD = (-1.43 * log10(1 + fc) + 2.228);
-                //std::normal_distribution<> loSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
-                //zenithSpreadDeparture = std::min(loSZenithSpreadDepartureDist(gen), log10(52.0));
             }
-            /*
-            shadowFading = pow(10, shadowFading / 10);
-            riceanK = pow(10, riceanK / 10);
-            delaySpread = pow(10, delaySpread);
-            azimuthSpreadDeparture = pow(10, azimuthSpreadDeparture);
-            azimuthSpreadArrival = pow(10, azimuthSpreadArrival);
-            zenithSpreadDeparture = pow(10, zenithSpreadDeparture);
-            zenithSpreadArrival = pow(10, zenithSpreadArrival);
-            */
 
             value << shadowFading, riceanK, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
             means << MeanSF, MeanK, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
-            standardDeviation << StandardDeviationSF, StandardDeviationK, StandardDeviationDS, StandardDeviationASD, StandardDeviationASA, StandardDeviationZSD, StandardDeviationZSA;
-            
-            
 
             //SF K DS ASD ASA ZSD ZSA
-            
             C << StandardDeviationSF * StandardDeviationSF, 0.5 * StandardDeviationSF * StandardDeviationK, -0.8 * StandardDeviationSF * StandardDeviationDS, -0.4 * StandardDeviationSF * StandardDeviationASD, -0.5 * StandardDeviationSF * StandardDeviationASA, 0.2 * StandardDeviationSF * StandardDeviationZSD, 0.3 * StandardDeviationSF * StandardDeviationZSA,
                 0.5 * StandardDeviationK * StandardDeviationSF, StandardDeviationK* StandardDeviationK, -0.5 * StandardDeviationK * StandardDeviationDS, 0.0 * StandardDeviationK * StandardDeviationASD, 0.0 * StandardDeviationK * StandardDeviationASA, 0.0 * StandardDeviationK * StandardDeviationZSD, 0.1 * StandardDeviationK * StandardDeviationZSA,
                 -0.8 * StandardDeviationDS * StandardDeviationSF, -0.5 * StandardDeviationDS * StandardDeviationK, StandardDeviationDS* StandardDeviationDS, 0.6 * StandardDeviationDS * StandardDeviationASD, 0.8 * StandardDeviationDS * StandardDeviationASA, 0.1 * StandardDeviationDS * StandardDeviationZSD, 0.2 * StandardDeviationDS * StandardDeviationZSA,
@@ -173,59 +169,14 @@ public:
                 -0.5 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationK, 0.8 * StandardDeviationASA * StandardDeviationDS, 0.4 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA* StandardDeviationASA, 0.0 * StandardDeviationASA * StandardDeviationZSD, 0.5 * StandardDeviationASA * StandardDeviationZSA,
                 0.2 * StandardDeviationZSD * StandardDeviationSF, 0.0 * StandardDeviationZSD * StandardDeviationK, 0.1 * StandardDeviationZSD * StandardDeviationDS, 0.5 * StandardDeviationZSD * StandardDeviationASD, 0.0 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.0 * StandardDeviationZSD * StandardDeviationZSA,
                 0.3 * StandardDeviationZSA * StandardDeviationSF, 0.1 * StandardDeviationZSA * StandardDeviationK, 0.2 * StandardDeviationZSA * StandardDeviationDS, 0.0 * StandardDeviationZSA * StandardDeviationASD, 0.5 * StandardDeviationZSA * StandardDeviationASA, 0.0 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
-            /*
-            C << 1, 0.5 , -0.8 , -0.4 , -0.5, 0.2 , 0.3 ,
-                0.5 , 1, -0.5 , 0.0 , 0.0 , 0.0, 0.1 ,
-                -0.8 , -0.5 , 1, 0.6 , 0.8 , 0.1 , 0.2 ,
-                -0.4 , 0.0, 0.6 , 1, 0.4 , 0.5 , 0.0 ,
-                -0.5 , 0.0 , 0.8 , 0.4 , 1, 0.0 , 0.5 ,
-                0.2 , 0.0 , 0.1 , 0.5 , 0.0 , 1, 0.0 ,
-                0.3 , 0.1 , 0.2 , 0.0 , 0.5 , 0.0 , 1;
-            */
-
-            //std::cout << C << std::endl << std::endl;
-
-
-            /*Вычисление и проверка главных миноров
-            for (int i = 1; i <= C.rows(); ++i) {
-                // Получаем верхнюю левую подматрицу размером i x i
-                MatrixXd minor = C.topLeftCorner(i, i);
-
-                // Вычисляем определитель (главный минор)
-                double determinant = minor.determinant();
-
-                // Выводим значение и знак главного минора
-                std::cout << i << "x" << i << ": " << determinant << std::endl;
-                if (determinant > 0) {
-                    std::cout << "+ " << std::endl;
-                }
-                else if (determinant < 0) {
-                    std::cout << "- " << std::endl;
-                }
-                else {
-                    std::cout << "0 " << std::endl;
-                }
-            }
-            */
 
             MatrixXd L;
             L = C.llt().matrixL();
-            //std::cout << L << "\n";
 
-            // Проверка на положительную определенность
-            if (C.llt().info() != Success) {
-                std::cerr << "Matrix C is not positive definite!" << std::endl;
-                return;
-            }
-
-            
-            std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
-            std::normal_distribution<double> normDist(0.0, 1.0);
+            GaussGenerator rand(0, 1);
             for (int i = 0; i < 7; ++i) {
-                value(i) = normDist(gen);
+                value(i) = rand();
             }
-
-            // Преобразование случайных величин с помощью матрицы Лапласа
 
             VectorXd value_new = L * value + means;
 
@@ -242,54 +193,30 @@ public:
         {
             VectorXd value(6);
             VectorXd means(6);
-            VectorXd standardDeviation(6);
             MatrixXd C(6, 6);
 
             //Если NLOS:
             //Затенение (SF)
             StandardDeviationSF = 8.03;
             MeanSF = 0;
-            //std::normal_distribution<> nLoSshadowFadingDist(MeanSF, StandardDeviationSF);
-            //shadowFading = nLoSshadowFadingDist(gen);
-
             // разброс задержки (DS)
             StandardDeviationDS = (0.10 * log10(1 + fc) + 0.055);
             MeanDS = (-0.28 * log10(1 + fc) - 7.173);
-            //std::normal_distribution<> nLoSdelaySpreadDist(MeanDS, StandardDeviationDS);
-            //delaySpread = nLoSdelaySpreadDist(gen); // Задержка распространения НЛОС
-
             //Азимутальный угол Разброс вылета (ASD)
             StandardDeviationASD = 0.25;
             MeanASD = 1.62;
-            //std::normal_distribution<> nLoSAzimuthSpreadDepartureDist(MeanASD, StandardDeviationASD);
-            //azimuthSpreadDeparture = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
             //Азимутальный угол Разброс прихода (ASA)
             StandardDeviationASA = (0.12 * log10(1 + fc) + 0.059);
             MeanASA = (-0.11 * log10(1 + fc) + 1.863);
-            //std::normal_distribution<> nLoSAzimuthSpreadArrivaDist(MeanASA, StandardDeviationASA);
-            //azimuthSpreadArrival = std::min((nLoSAzimuthSpreadDepartureDist(gen)), log10(104.0));
-
-
             //Зенитный угол Разброс прихода (ZSA)
             StandardDeviationZSA = (-0.09 * log10(1 + fc) + 0.746);
             MeanZSA = (-0.15 * log10(1 + fc) + 1.387);
-            //std::normal_distribution<> nLoSZenithSpreadArrivalDist(MeanZSA, StandardDeviationZSA);
-            //zenithSpreadArrival = std::min(nLoSZenithSpreadArrivalDist(gen), log10(52.0));
-
             //Зенитный угол Разброс вылета (ZSD)
             StandardDeviationZSD = 0.36;
             MeanZSD = 1.08;
 
-            //std::normal_distribution<> nLoSZenithSpreadDepartureDist(MeanZSD, StandardDeviationZSD);
-            //zenithSpreadDeparture = std::min(nLoSZenithSpreadDepartureDist(gen), log10(52.0));
-            
             value << shadowFading, delaySpread, azimuthSpreadDeparture, azimuthSpreadArrival, zenithSpreadDeparture, zenithSpreadArrival;
             means << MeanSF, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
-            standardDeviation << StandardDeviationSF,  StandardDeviationDS, StandardDeviationASD, StandardDeviationASA, StandardDeviationZSD, StandardDeviationZSA;
-
-            std::cout << value << "\n";
-            
 
             //SF  DS ASD ASA ZSD ZSA
             C << StandardDeviationSF * StandardDeviationSF, -0.5 * StandardDeviationSF * StandardDeviationDS, 0.0 * StandardDeviationSF * StandardDeviationASD, -0.4 * StandardDeviationSF * StandardDeviationASA, 0.0 * StandardDeviationSF * StandardDeviationZSD, 0.0 * StandardDeviationSF * StandardDeviationZSA,
@@ -298,59 +225,15 @@ public:
                 -0.4 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationDS, 0.0 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA* StandardDeviationASA, -0.08 * StandardDeviationASA * StandardDeviationZSD, 0.43 * StandardDeviationASA * StandardDeviationZSA,
                 0.0 * StandardDeviationZSD * StandardDeviationSF, -0.27 * StandardDeviationZSD * StandardDeviationDS, 0.35 * StandardDeviationZSD * StandardDeviationASD, -0.08 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.42 * StandardDeviationZSD * StandardDeviationZSA,
                 0.0 * StandardDeviationZSA * StandardDeviationSF, -0.06 * StandardDeviationZSA * StandardDeviationDS, 0.23 * StandardDeviationZSA * StandardDeviationASD, 0.43 * StandardDeviationZSA * StandardDeviationASA, 0.42 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
-            
-            /*
-            C << 1, -0.5 , 0.0 , -0.4 , 0.0 , 0.0 ,
-                -0.5 , 1, 0.4 , 0.0 , -0.27 , -0.06 ,
-                0.0 , 0.4 , 1, 0.0 , 0.35 , 0.23 ,
-                -0.4 , 0.0 , 0.0 , 1, -0.08 , 0.43 ,
-                0.0 , -0.27 , 0.35 , -0.08 , 1 , 0.42 ,
-                0.0 , -0.06 , 0.23 , 0.43 , 0.42 , 1;
-            */
-            //std::cout << C << std::endl << std::endl;
-
-
-            /* Вычисление и проверка главных миноров
-            for (int i = 1; i <= C.rows(); ++i) {
-                // Получаем верхнюю левую подматрицу размером i x i
-                MatrixXd minor = C.topLeftCorner(i, i);
-
-                // Вычисляем определитель (главный минор)
-                double determinant = minor.determinant();
-
-                // Выводим значение и знак главного минора
-                std::cout << i << "x" << i << ": " << determinant << std::endl;
-                if (determinant > 0) {
-                    std::cout << "+ " << std::endl;
-                }
-                else if (determinant < 0) {
-                    std::cout << "- " << std::endl;
-                }
-                else {
-                    std::cout << "0 " << std::endl;
-                }
-            }
-            */
 
             MatrixXd L;
             L = C.llt().matrixL();
-            //std::cout << L << "\n";
-
-            // Проверка на положительную определенность
-            if (C.llt().info() != Success) {
-                std::cerr << "Matrix C is not positive definite!" << std::endl;
-                return;
-            }
-
-            
-            std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
-            std::normal_distribution<double> normDist(0.0, 1.0);
+            GaussGenerator rand(0, 1);
             for (int i = 0; i < 6; ++i) {
-                value(i) = normDist(gen);
+                value(i) = rand();
             }
 
             // Преобразование случайных величин с помощью матрицы Лапласа
-
             VectorXd value_new = L * value + means;
 
             shadowFading = value_new(0);
@@ -359,17 +242,8 @@ public:
             azimuthSpreadArrival = std::min((value_new(3)), log10(104.0));
             zenithSpreadDeparture = std::min((value_new(4)), log10(52.0));
             zenithSpreadArrival = std::min((value_new(5)), log10(52.0));
-
-
-            
-
         }
     }
-
-
-
-
-
 
     void showParameters() {
         if (los) {
@@ -381,7 +255,6 @@ public:
             std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
         }
     }
-
 
 };
 
@@ -467,28 +340,7 @@ public:
     }
 
     // в fieldPattern - 1 theta, 2 phi
-    /*
-    //Переход от LSC в GSC
-    Eigen::Vector2d transformationFromLCStoGCS(double thetaAngle, double phiAngle, double bearingAngle, double downtiltAngle, double slantAngle, Eigen::Vector2d& fieldPattern) const
-    {
-        Eigen::Vector2d transformFieldPattern;
-
-        double cos_Pci = (cos(downtiltAngle) * cos(slantAngle) * sin(thetaAngle) - (sin(downtiltAngle) * cos(slantAngle) * cos(phiAngle - bearingAngle) - sin(slantAngle) * sin(phiAngle - bearingAngle)) * cos(thetaAngle))
-            / sqrt(1 - pow(cos(downtiltAngle) * cos(slantAngle) * sin(thetaAngle) + (sin(downtiltAngle) * cos(slantAngle) * cos(phiAngle - bearingAngle) - sin(slantAngle) * sin(phiAngle - bearingAngle)) * sin(thetaAngle), 2));
-
-
-        double sin_Pci = (sin(downtiltAngle) * cos(slantAngle) * sin(phiAngle - bearingAngle) + sin(slantAngle) * cos(phiAngle - bearingAngle))
-            / sqrt(1 - pow(cos(downtiltAngle) * cos(slantAngle) * sin(thetaAngle) + (sin(downtiltAngle) * cos(slantAngle) * cos(phiAngle - bearingAngle) - sin(slantAngle) * sin(phiAngle - bearingAngle)) * sin(thetaAngle),2));
-
-        double f_Theta = cos_Pci * fieldPattern(0) - sin_Pci * fieldPattern(1);
-        double f_Phi = sin_Pci * fieldPattern(0) + cos_Pci * fieldPattern(1);
-        //double f_Theta = sin_Pci * fieldPattern(0) + cos_Pci * fieldPattern(1);
-        //double f_Phi = cos_Pci * fieldPattern(0) - sin_Pci * fieldPattern(1);
-
-        transformFieldPattern << f_Theta, f_Phi;
-        return transformFieldPattern;
-    }
-    */
+   
     void calculateLOSAngles(const UserTerminal& transmitter, const UserTerminal& receiver,
         double& losPhiAOD, double& losThetaZOD,
         double& losPhiAOA, double& losThetaZOA) const
@@ -564,12 +416,8 @@ double nlos_r_tau = 3.0;
 std::vector<double> generateClusterDelays(bool los, double delaySpread,  double riceanK)
 {
     delaySpread = pow(10, delaySpread);
-
-    
-
     std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
     
-
     std::vector<double> delays_tau;
     double delay_tau_n;
     //delays_tau.clear();
@@ -617,11 +465,8 @@ std::vector<double> generateClusterDelays(bool los, double delaySpread,  double 
 //__________________________________Генерация мощностей кластеров__________________________________________//
 std::vector<double> generateClusterPowers(bool los, const std::vector<double>& clusterDelays, double delaySpread)
 {
-    
     delaySpread = pow(10, delaySpread);
     
-
-
     std::vector<double> clusterPowers(clusterDelays.size());
     double power = 0.0;
     double maxPower = 0.0;
@@ -634,23 +479,20 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
 
         if (los) {
             std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
-            double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp(((-1) * clusterDelays[n] * (los_r_tau - 1))  * pow(10, ( (-1) * shadowing / 10)) / (los_r_tau * delaySpread));
+            double shadowing = shadowFadingDist(gen); // Генерация затенения 
+            power = exp(((-1) * clusterDelays[n] * (los_r_tau - 1))   / (los_r_tau * delaySpread)) * pow(10, (-0.1 * shadowing));
         }
         else {
             std::normal_distribution<> shadowFadingDist(0, 9); // is the per cluster shadowing term in [dB] NLOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp(((-1) * clusterDelays[n] * (nlos_r_tau - 1))  * pow(10, ( (-1) * shadowing / 10)) / (nlos_r_tau * delaySpread));
+            power = exp(((-1) * clusterDelays[n] * (nlos_r_tau - 1))   / (nlos_r_tau * delaySpread)) * pow(10, (-0.1 * shadowing));
         }
         clusterPowers[n] = power;
     }
 
-
     // Нормализация мощностей кластеров
-    
     for (auto& n : clusterPowers) sumclusterPowers += n;
 
-    
     for (size_t n = 0; n < clusterPowers.size(); ++n) {
         clusterPowers[n] = clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
     }
@@ -683,281 +525,145 @@ double nlos_C_ASD = 5.0;
 double nlos_C_ZSA = 9.0;
 double nlos_C_ZSD = 0.375;
 
+std::vector<double> los_C = { los_C_ASA , los_C_ASD , los_C_ZSA , los_C_ZSD };
+std::vector<double> nlos_C = { nlos_C_ASA , nlos_C_ASD , nlos_C_ZSA , nlos_C_ZSD };
+
 //____table_7.5.3________Ray_offset_angles_within_a_cluster,_given_for_rms_angle_spread_normalized_to_1
 std::vector<double> am = { 0.0447, -0.0447 ,0.1413 ,-0.1413,0.2492 ,-0.2492 ,0.3715 ,-0.3715 ,0.5129 ,-0.5129 ,
     0.6797 ,-0.6797, 0.8844 , -0.8844,1.1481,-1.1481, 1.5195 , -1.5195, 2.1551 , -2.1551 };
 
-//_________________________________________________AOA____________________________________________________//
-Eigen::MatrixXd generatePhiAOA(bool los, const std::vector<double>& clusterPowers_main, double AzimuthSpreadArrival, double riceanK, double losPhiAOA) {
+//_________________________________________________AOA/AOD____________________________________________________//
+Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& clusterPowers, double ASAorASD, double riceanK, double AOAorAOD, int AOA_0_or_AOD_1) {
 
-    losPhiAOA = losPhiAOA * 180 / M_PI;
-    AzimuthSpreadArrival = pow(10, AzimuthSpreadArrival);
-    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
+    AOAorAOD = AOAorAOD * 180 / M_PI;
+    ASAorASD = pow(10, ASAorASD);
+    GaussGenerator YnDist(0, (ASAorASD / 7) * (ASAorASD / 7));
+    UniformGenerator XnDist(-1, 1);
 
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    //n - должен быть размер кластера задержек
+    double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
+    
     double X1;
     double Y1;
-    double Phi_1_AOA;
-
-    double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
-
-    if (los) // случай LOS
+    double AOAorAOD_n1;
+    
+    if (los) 
     {
-        std::vector<double> Phi_n_AOA(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_AOA(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
+        VectorXd AOAorAOD_n(clusterPowers.size());
+        MatrixXd AOAorAOD_n_m(clusterPowers.size() + 1, 20);
+
+        for (int n = 0; n < clusterPowers.size()  ; n++)
         {
-            if (los)
+            double Xn = XnDist(); // Xn ~ uniform(-1,1)
+            double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+            double Yn = YnDist();
+
+            AOAorAOD_n[n] = 2 * (ASAorASD / 1.4) * sqrt( - log(clusterPowers[n] / maxPower)) / C_phi; // Применение уравнения (7.5-9)
+
+            if (n == 0) // добавляем 1 луч
             {
-                double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
-                double Yn = generateNormalRandom(0, (AzimuthSpreadArrival / 7) * (AzimuthSpreadArrival / 7), gen);
-                // Yn ~ N(0,(ASA/7)^2)
-
-                if (n == 0) // добавляем 1 луч
-                {
-                    X1 = Xn; Y1 = Yn; Phi_1_AOA = Phi_n_AOA[n];
-                    Phi_n_m_AOA(n, 0) = losPhiAOA;
-                }
-
-                else
-                {
-                    Phi_n_AOA[n] = (2 * (AzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-
-                    Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA - Phi_1_AOA * X1 - Y1;
-                    for (int m = 0; m < 20; ++m)
-                    {
-                        Phi_n_m_AOA(n, m) = Phi_n_AOA[n] + los_C_ASA * am[m];
-                    }
-                }
+                X1 = Xn; Y1 = Yn; AOAorAOD_n1 = AOAorAOD_n[n];
+                AOAorAOD_n_m(n, 0) = AOAorAOD;
+                
             }
+           
+            AOAorAOD_n(n) = AOAorAOD_n(n) * Xn + Yn + AOAorAOD - AOAorAOD_n1 * X1 - Y1;
+            for (int m = 0; m < 20; ++m)
+            {
+                AOAorAOD_n_m(n + 1 , m) = AOAorAOD_n(n) + los_C[AOA_0_or_AOD_1] * am[m];
+            }    
         }
-        return Phi_n_m_AOA;
+        return AOAorAOD_n_m;
     }
     else // случай NLOS
     {
-        std::vector<double> Phi_n_AOA(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_AOA(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
-        {
-            double C_phi = 1.273;
-            Phi_n_AOA[n] = (2 * (AzimuthSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-            double Yn = generateNormalRandom(0, (AzimuthSpreadArrival / 7) * (AzimuthSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+        VectorXd AOAorAOD_n(clusterPowers.size()  );
+        MatrixXd AOAorAOD_n_m(clusterPowers.size() , 20);
 
-            Phi_n_AOA[n] = Phi_n_AOA[n] * Xn + Yn + losPhiAOA;
+        for (int n = 0; n < clusterPowers.size(); n++)
+        {
+            double Xn = XnDist(); // Xn ~ uniform(-1,1)
+            double C_phi = 1.273;
+            double Yn = YnDist();
+
+            AOAorAOD_n(n) = 2 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower) / C_phi); // Применение уравнения (7.5-9) 
+
+            AOAorAOD_n(n) = AOAorAOD_n(n) * Xn + Yn + AOAorAOD;
 
             for (int m = 0; m < 20; ++m)
             {
-                Phi_n_m_AOA(n, m) = Phi_n_AOA[n] + nlos_C_ASA * am[m];
+                AOAorAOD_n_m(n , m) = AOAorAOD_n(n) + nlos_C[AOA_0_or_AOD_1] * am[m];
             }
         }
-        return Phi_n_m_AOA;
+        return AOAorAOD_n_m;
     }
 }
 
-//_____________________________________________AOD____________________________________________________//
-Eigen::MatrixXd generatePhiAOD(bool los, const std::vector<double>& clusterPowers_main, double AzimuthSpreadDeparture, double riceanK, double losPhiAOD) {
+//_____________________________________________ZOA/ZOD____________________________________________________//
+Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& clusterPowers, double ZSAorZSD, double riceanK, double ZOAorZOD, int ZOA_2_or_ZOD_3) {
 
-    losPhiAOD = losPhiAOD * 180 / M_PI;
-    AzimuthSpreadDeparture = pow(10, AzimuthSpreadDeparture);
-    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
+    ZOAorZOD = ZOAorZOD * 180 / M_PI;
+    ZSAorZSD = pow(10, ZSAorZSD);
+    GaussGenerator YnDist(0, (ZSAorZSD / 7) * (ZSAorZSD / 7));
+    UniformGenerator XnDist(-1, 1);
 
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
+    double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
     //n - должен быть размер кластера задержек
     double X1;
     double Y1;
-    double Phi_1_AOD;
-
-    double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
+    double ZOAorZOD_n1;
 
     if (los) // случай LOS
     {
-        std::vector<double> Phi_n_AOD(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_AOD(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
+        VectorXd ZOAorZOD_n(clusterPowers.size());
+        MatrixXd ZOAorZOD_n_m(clusterPowers.size() + 1, 20);
+        for (int n = 0; n < clusterPowers.size(); n++)
         {
             if (los)
             {
-                double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
-                double Yn = generateNormalRandom(0, (AzimuthSpreadDeparture / 7) * (AzimuthSpreadDeparture / 7), gen);
-                // Yn ~ N(0,(ASD/7)^2)
+                double Xn = XnDist();
+                double C_phi = 1.184 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+                double Yn = YnDist();
+
+                ZOAorZOD_n(n) = (2 * (ZSAorZSD / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
 
                 if (n == 0) // добавляем 1 луч
                 {
-                    X1 = Xn; Y1 = Yn; Phi_1_AOD = Phi_n_AOD[n];
-                    Phi_n_m_AOD(n, 0) = losPhiAOD;
+                    X1 = Xn; Y1 = Yn; ZOAorZOD_n1 = ZOAorZOD_n(n);
+                    ZOAorZOD_n_m(n, 0) = ZOAorZOD;
                 }
 
-                else
+                ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD - ZOAorZOD_n1 * X1 - Y1;
+                for (int m = 0; m < 20; ++m)
                 {
-                    Phi_n_AOD[n] = (2 * (AzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-
-                    Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD - Phi_1_AOD * X1 - Y1;
-                    for (int m = 0; m < 20; ++m)
-                    {
-                        Phi_n_m_AOD(n, m) = Phi_n_AOD[n] + los_C_ASD * am[m];
-                    }
-                }
+                    ZOAorZOD_n_m(n + 1, m) = ZOAorZOD_n(n) + los_C[ZOA_2_or_ZOD_3] * am[m];
+                }   
             }
         }
-        return Phi_n_m_AOD;
+        return ZOAorZOD_n_m;
     }
     else // случай NLOS
     {
-        std::vector<double> Phi_n_AOD(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_AOD(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
+        VectorXd ZOAorZOD_n(clusterPowers.size());
+        MatrixXd ZOAorZOD_n_m(clusterPowers.size(), 20);
+        for (int n = 0; n < clusterPowers.size(); n++)
         {
-            double C_phi = 1.273;
-            Phi_n_AOD[n] = (2 * (AzimuthSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-            double Yn = generateNormalRandom(0, (AzimuthSpreadDeparture / 7) * (AzimuthSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
+            double Xn = XnDist();
+            double C_phi = 1.184;
+            double Yn = YnDist();
+            ZOAorZOD_n(n) = (2 * (ZSAorZSD / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
 
-            Phi_n_AOD[n] = Phi_n_AOD[n] * Xn + Yn + losPhiAOD;
+            ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD;
 
             for (int m = 0; m < 20; ++m)
             {
-                Phi_n_m_AOD(n, m) = Phi_n_AOD[n] + nlos_C_ASD * am[m];
+                ZOAorZOD_n_m(n, m) = ZOAorZOD_n(n) + nlos_C[ZOA_2_or_ZOD_3] * am[m];
             }
         }
-        return Phi_n_m_AOD;
+        return ZOAorZOD_n_m;
     }
 }
 
-//_____________________________________________ZOA____________________________________________________//
-Eigen::MatrixXd generateThetaZOA(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadArrival, double riceanK, double losPhiZOA) {
 
-    losPhiZOA = losPhiZOA * 180 / M_PI;
-    ZenithSpreadArrival = pow(10, ZenithSpreadArrival);
-    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
-
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    //n - должен быть размер кластера задержек
-    double X1;
-    double Y1;
-    double Phi_1_ZOA;
-
-    double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
-
-    if (los) // случай LOS
-    {
-        std::vector<double> Phi_n_ZOA(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_ZOA(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
-        {
-            if (los)
-            {
-                double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
-                double Yn = generateNormalRandom(0, (ZenithSpreadArrival / 7) * (ZenithSpreadArrival / 7), gen);
-                // Yn ~ N(0,(ZSA/7)^2)
-
-                if (n == 0) // добавляем 1 луч
-                {
-                    X1 = Xn; Y1 = Yn; Phi_1_ZOA = Phi_n_ZOA[n];
-                    Phi_n_m_ZOA(n, 0) = losPhiZOA;
-                }
-
-                else
-                {
-                    Phi_n_ZOA[n] = (2 * (ZenithSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-
-                    Phi_n_ZOA[n] = Phi_n_ZOA[n] * Xn + Yn + losPhiZOA - Phi_1_ZOA * X1 - Y1;
-                    for (int m = 0; m < 20; ++m)
-                    {
-                        Phi_n_m_ZOA(n, m) = Phi_n_ZOA[n] + los_C_ZSA * am[m];
-                    }
-                }
-            }
-        }
-        return Phi_n_m_ZOA;
-    }
-    else // случай NLOS
-    {
-        std::vector<double> Phi_n_ZOA(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_ZOA(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
-        {
-            double C_phi = 1.273;
-            Phi_n_ZOA[n] = (2 * (ZenithSpreadArrival / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-            double Yn = generateNormalRandom(0, (ZenithSpreadArrival / 7) * (ZenithSpreadArrival / 7), gen);//Yn ~ N(0,(ASA/7)^2)
-
-            Phi_n_ZOA[n] = Phi_n_ZOA[n] * Xn + Yn + losPhiZOA;
-
-            for (int m = 0; m < 20; ++m)
-            {
-                Phi_n_m_ZOA(n, m) = Phi_n_ZOA[n] + nlos_C_ZSA * am[m];
-            }
-        }
-        return Phi_n_m_ZOA;
-    }
-}
-
-//_________________________________________________ZOD____________________________________________________//
-Eigen::MatrixXd generateThetaZOD(bool los, const std::vector<double>& clusterPowers_main, double ZenithSpreadDeparture, double riceanK, double losPhiZOD) {
-
-    losPhiZOD = losPhiZOD * 180 / M_PI;
-    ZenithSpreadDeparture = pow(10, ZenithSpreadDeparture);
-    std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
-
-    double maxPower = *max_element(clusterPowers_main.begin(), clusterPowers_main.end());
-    //n - должен быть размер кластера задержек
-    double X1;
-    double Y1;
-    double Phi_1_ZOD;
-
-    double Xn = std::uniform_real_distribution<>(-1.0, 1.0)(gen); // Xn ~ uniform(-1,1)
-
-    if (los) // случай LOS
-    {
-        std::vector<double> Phi_n_ZOD(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_ZOD(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
-        {
-            if (los)
-            {
-                double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
-                double Yn = generateNormalRandom(0, (ZenithSpreadDeparture / 7) * (ZenithSpreadDeparture / 7), gen);
-                // Yn ~ N(0,(ZSD/7)^2)
-
-                if (n == 0) // добавляем 1 луч
-                {
-                    X1 = Xn; Y1 = Yn; Phi_1_ZOD = Phi_n_ZOD[n];
-                    Phi_n_m_ZOD(n, 0) = losPhiZOD;
-                }
-
-                else
-                {
-                    Phi_n_ZOD[n] = (2 * (ZenithSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n - 1] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-
-                    Phi_n_ZOD[n] = Phi_n_ZOD[n] * Xn + Yn + losPhiZOD - Phi_1_ZOD * X1 - Y1;
-                    for (int m = 0; m < 20; ++m)
-                    {
-                        Phi_n_m_ZOD(n, m) = Phi_n_ZOD[n] + los_C_ZSD * am[m];
-                    }
-                }
-            }
-        }
-        return Phi_n_m_ZOD;
-    }
-    else // случай NLOS
-    {
-        std::vector<double> Phi_n_ZOD(clusterPowers_main.size());
-        Eigen::MatrixXd Phi_n_m_ZOD(clusterPowers_main.size(), 20);
-        for (int n = 0; n < clusterPowers_main.size(); n++)
-        {
-            double C_phi = 1.273;
-            Phi_n_ZOD[n] = (2 * (ZenithSpreadDeparture / 1.4) * pow(-log(clusterPowers_main[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
-            double Yn = generateNormalRandom(0, (ZenithSpreadDeparture / 7) * (ZenithSpreadDeparture / 7), gen);//Yn ~ N(0,(ASA/7)^2)
-
-            Phi_n_ZOD[n] = Phi_n_ZOD[n] * Xn + Yn + losPhiZOD;
-
-            for (int m = 0; m < 20; ++m)
-            {
-                Phi_n_m_ZOD(n, m) = Phi_n_ZOD[n] + nlos_C_ZSD * am[m];
-            }
-        }
-        return Phi_n_m_ZOD;
-    }
-}
 //_________________________________________A_1________________________________________________________//
 std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vector<double>& clasterPowers, MatrixXd& AOD, MatrixXd& AOA, MatrixXd& ZOD, MatrixXd& ZOA) {
     std::vector<double> ASandMeanAnglesforAOD_AOA_ZOD_ZOA;
@@ -1113,12 +819,11 @@ Eigen::MatrixXd generateXPR(bool los, const std::vector<double>& clusterPowers) 
     double mean_Xn = 10;
 
     if (los) { mean_Xn = 11; }
+    GaussGenerator XnmDist(mean_Xn, 16);
 
     for (int n = 0; n < clusterPowers.size(); ++n) {
         for (int m = 0; m < 20; ++m) {
-
-            std::normal_distribution<> X_n_m_Dist(mean_Xn, 16);
-            XPR(n, m) = pow(10, (X_n_m_Dist(gen)) / 10);
+            XPR(n, m) = pow(10, XnmDist() / 10);
         }
     }
     return XPR;
@@ -1128,19 +833,17 @@ Eigen::MatrixXd generateXPR(bool los, const std::vector<double>& clusterPowers) 
 //_________________________________Функция_для_генерации_случайных_начальных_фаз___________________________//
 Eigen::MatrixXd generateInitialRandomPhases(std::vector<double>& clusterPowers)
 {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> phaseDist(-M_PI, M_PI); // Распределение фаз от -π до π
+    UniformGenerator phaseDist(-M_PI, M_PI); // Распределение фаз от -π до π
 
     Eigen::MatrixXd initialRandomPhases(clusterPowers.size(), 80);
 
     for (int n = 0; n < clusterPowers.size(); ++n) {
         for (int m = 0; m < 20; ++m) {
             // Генерация случайных фаз для каждой комбинации поляризации
-            initialRandomPhases(n, m * 4) = phaseDist(gen); // Theta - Theta
-            initialRandomPhases(n, m * 4 + 1) = phaseDist(gen); // Theta - Phi
-            initialRandomPhases(n, m * 4 + 2) = phaseDist(gen); // Phi - Theta
-            initialRandomPhases(n, m * 4 + 3) = phaseDist(gen); // Phi - Phi
+            initialRandomPhases(n, m * 4) = phaseDist(); // Theta - Theta
+            initialRandomPhases(n, m * 4 + 1) = phaseDist(); // Theta - Phi
+            initialRandomPhases(n, m * 4 + 2) = phaseDist(); // Phi - Theta
+            initialRandomPhases(n, m * 4 + 3) = phaseDist(); // Phi - Phi
         }
     }
     return initialRandomPhases;
@@ -1202,8 +905,8 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
                         auto temp2 = temp1 * F_tx; // Продолжение операции
 
                         // Вместо сложной операции, используя std::complex<double>
-                        std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
-                        std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                        std::complex<double> exp_factor_rx = std::complex<double>(cos(2 * M_PI * rx / 0.1), sin(2 * M_PI * rx / 0.1)); //exp(j) * exp(2 * M_PI * rx / 0.1)
+                        std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
                         channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
@@ -1243,8 +946,8 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
 
                         // Вместо сложной операции, используя std::complex<double>
-                        std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
-                        std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                        std::complex<double> exp_factor_rx = std::complex<double>(cos(2 * M_PI * rx / 0.1),sin(2 * M_PI * rx / 0.1)); //exp(j) * exp(2 * M_PI * rx / 0.1)
+                        std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
 
@@ -1257,7 +960,6 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
                         else {
                             channelCoefficients_u_s_n(s + u + pair, 3 * n + 2) += 0.05 * channelCoefficients_n;
                         }
-
                     }
                 }
             }
@@ -1265,7 +967,6 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
         }
         channelCoefficients_u_s_n.col(n) *= sqrt(clusterPowers[n]);
     }
-
     return channelCoefficients_u_s_n;
 }
 
@@ -1300,9 +1001,6 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
                         Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
-                        //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                        //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
-
                         Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
                             sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
                             cos(thetaZOD_n_m(n, m)));
@@ -1325,8 +1023,8 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         auto temp2 = temp1 * F_tx; // Продолжение операции
 
                         // Вместо сложной операции, используя std::complex<double>
-                        std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
-                        std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                        std::complex<double> exp_factor_rx = std::complex<double>(cos(2 * M_PI * rx / 0.1), sin(2 * M_PI * rx / 0.1)); //exp(j) * exp(2 * M_PI * rx / 0.1)
+                        std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
                         channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
@@ -1335,8 +1033,6 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
                         Eigen::Vector2d F_rx = receiver.FieldPattern(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), ksi_rx);
 
-                        //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                        //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, m), phiAOA_n_m(n, m), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                         Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, m)) * cos(phiAOD_n_m(n, m)),
                             sin(thetaZOD_n_m(n, m)) * sin(phiAOD_n_m(n, m)),
@@ -1360,8 +1056,8 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         auto temp2 = temp1 * F_tx; // Продолжение операции
 
                         // Вместо сложной операции, используя std::complex<double>
-                        std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
-                        std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
+                        std::complex<double> exp_factor_rx = std::complex<double>(cos(2 * M_PI * rx / 0.1), sin(2 * M_PI * rx / 0.1)); //exp(j) * exp(2 * M_PI * rx / 0.1)
+                        std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
                         if (m < 8 || m >17) {
@@ -1381,9 +1077,6 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                 if (n == 0) {
                     Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), 0.0);
                     Eigen::Vector2d F_rx = transmitter.FieldPattern(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), 0.0);
-
-                    //Eigen::Vector2d F_tx = transmitter.transformationFromLCStoGCS(thetaZOD_n_m(n, 0), phiAOD_n_m(n, 0), transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F1_tx);
-                    //Eigen::Vector2d F_rx = receiver.transformationFromLCStoGCS(thetaZOA_n_m(n, 0), phiAOA_n_m(n, 0), receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F1_rx);
 
                     Eigen::Vector3d sphericalUnitVector_tx(sin(thetaZOD_n_m(n, 0)) * cos(phiAOD_n_m(n, 0)),
                         sin(thetaZOD_n_m(n, 0)) * sin(phiAOD_n_m(n, 0)),
@@ -1406,9 +1099,9 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
 
 
                     // Вместо сложной операции, используя std::complex<double>
-                    std::complex<double> exp_factor_rx = exp(j) * exp(2 * M_PI * rx / 0.1);
-                    std::complex<double> exp_factor_tx = exp(j) * exp(2 * M_PI * tx / 0.1);
-                    std::complex<double> exp_d3D = exp(j) * exp(-2 * M_PI * calculateDistance(transmitter, receiver) / ( 0.1));
+                    std::complex<double> exp_factor_rx = std::complex<double>(cos(2 * M_PI * rx / 0.1), sin(2 * M_PI * rx / 0.1)); //exp(j) * exp(2 * M_PI * rx / 0.1)
+                    std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
+                    std::complex<double> exp_d3D = std::complex<double>(cos(-2 * M_PI * calculateDistance(transmitter, receiver) / 0.1), sin(-2 * M_PI * calculateDistance(transmitter, receiver) / 0.1)); //exp(j) * exp(-2 * M_PI * calculateDistance(transmitter, receiver) / ( 0.1));
 
                     std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx * exp_d3D;
 
@@ -1483,9 +1176,6 @@ int main() {
         }
     }
 
-    // Передача сигнала между пользователями 
-    std::complex<double> signal(1.0, 0.0); // Сигнал с амплитудой 1 и фазой 0
-
     for (const auto& pair : selectedPairs) {
         const UserTerminal& transmitter = users[pair.first];
         const UserTerminal& receiver = users[pair.second];
@@ -1501,64 +1191,69 @@ int main() {
 
         Eigen::Vector2d F_tx = transmitter.FieldPattern(losThetaZOD, losPhiAOD, 45);
         std::cout << "{F_tx_theta,F_tx_pfi} : " << F_tx[0] << " ; " << F_tx[1] << std::endl;
-        /*
-        Eigen::Vector2d txAntennaPattern = transmitter.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, transmitter.bearingAngle, transmitter.downtiltAngle, transmitter.slantAngle, F_tx);
-        std::cout << "Bearing Angle for transmitter  = " << transmitter.downtiltAngle << " rad" << std::endl;
-        std::cout << "Transformation from LCS to GCS F_tx_Theta, F_tx_Pfi  : { " << txAntennaPattern[0] << " ; " << txAntennaPattern[1] << " }" << std::endl << std::endl;
-        */
 
         Eigen::Vector2d F_rx = receiver.FieldPattern(losThetaZOA, losPhiAOA, 45);
         std::cout << "{F_rx_theta,F_rx_pfi} : " << F_rx[0] << " ; " << F_rx[1] << std::endl;
-        /*
-        Eigen::Vector2d rxAntennaPattern = receiver.transformationFromLCStoGCS(losThetaZOD, losPhiAOD, receiver.bearingAngle, receiver.downtiltAngle, receiver.slantAngle, F_rx);
-        std::cout << "Bearing Angle for receiver  = " << receiver.downtiltAngle << " rad" << std::endl;
-        std::cout << "Transformation from LCS to GCS F_rx_Theta, F_rx_Pfi  : { " << rxAntennaPattern[0] << " ; " << rxAntennaPattern[1] << " }" << std::endl << std::endl;
-        */
 
         // Элементы антенны
         Eigen::MatrixXd d_tx = transmitter.generateAntennaElements();
         std::cout << "d_tx :\n" << d_tx << std::endl << std::endl;
 
         //_______________________________________STEP_2________________________________________//
-
         // Вычисление расстояния между передатчиком и приемником
         double d = calculateDistance(transmitter, receiver);
         std::cout << "Distance between transmitter and receiver is " << d << std::endl;
 
+        std::uniform_real_distribution<> pDist(0.0, 1.0); // равномерное распределение вероятности LOS (подброс монетка)
+
         double P_LOS;
         bool los;
-        if (d <= 5)
-        {
+        double p; // случайно сгенерированная вероятность (порог LOS)
+        if (d <= 5) {
             P_LOS = 1;
             los = true;
             std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
         }
-        else if (d > 5 && d <= 49)
-        {
+        else if (d > 5 && d <= 49) {
             P_LOS = exp(-(d - 5) / 70.8);
-            los = true;
-            std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
+            p = pDist(gen);
+            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+            if (P_LOS > p) {
+                los = true;
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " > " << p << ", Link - LOS" << std::endl;
+            }
+            else {
+                los = false;
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " < " << p << ", Link - NLOS" << std::endl;
+            }
+        }
+        else {
+            P_LOS = exp(-(d - 49) / 211.7) * 0.54;
+            p = pDist(gen);
+            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+            if (P_LOS > p) {
+                los = true;
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " > " << p << ", Link - LOS" << std::endl;
+            }
+            else {
+                los = false;
+                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " is " << P_LOS << " < " << p << ", Link - NLOS" << std::endl;
+            }
+        }
+        //__STEP3__//
+        // Вычисление Pathloss_LOS для каждой пары
+        double path_loss;
+        double nu = 3.0; // частота в ГГц
+        if (los)
+        {
+            path_loss = 32.4 + 17.3 * log10(d) + 20 * log10(nu);
+            std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss << std::endl << std::endl;
         }
         else
         {
-            P_LOS = exp(-(d - 49) / 211.7) * 0.54;
-            if (P_LOS < 0.5) {
-                los = false;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - NLOS" << std::endl;
-            }
-            else {
-                los = true;
-                std::cout << "LOS probability between " << transmitter.id << " and " << receiver.id << " = " << P_LOS << ", Link - LOS" << std::endl;
-            }
+            path_loss = 38.3 * log10(d) + 17.30 + 24.9 * log10(nu);
+            std::cout << "Pathloss in NLOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss << std::endl << std::endl;
         }
-
-        //_________________________________________________STEP_3__________________________________________//
-        // Вычисление Pathloss_LOS для каждой пары
-        double path_loss_LOS;
-        double nu = 3.0; // частота в ГГц
-        path_loss_LOS = 32.4 + 17.3 * log10(d) + 20 * log10(nu);
-
-        std::cout << "PathLoss in LOS between users " << transmitter.id << " and " << receiver.id << " = " << path_loss_LOS << std::endl << std::endl;
 
         //_________________________________________________STEP_4__________________________________________//
         std::cout << "\nLSP for LOS for User " << transmitter.id << " and User " << receiver.id << " :\n\n";
@@ -1586,11 +1281,10 @@ int main() {
         if (los) {
 
             for (size_t n = 0; n < clusterPowersWithScalingFactors.size(); ++n) {
-                clusterPowersWithScalingFactors[n] *= (1 / (pow(10, lsp.riceanK) + 1))  ;
+                clusterPowersWithScalingFactors[n] *= (1 / (pow(10, lsp.riceanK / 10) + 1))  ;
             }
-            clusterPowersWithScalingFactors[0] += (pow(10, lsp.riceanK) / (pow(10, lsp.riceanK) + 1));
+            clusterPowersWithScalingFactors[0] += pow(10, lsp.riceanK / 10) / (pow(10, lsp.riceanK / 10) + 1);
         }
-
 
         // Выводы значений 
         std::cout << "Cluster delays for User " << transmitter.id << " and User " << receiver.id << ":\n\n";
@@ -1614,13 +1308,12 @@ int main() {
         std::cout << std::endl << std::endl;
 
         //_____________STEP_7_______________//
-
         //Generate arrival angles and departure angles for both azimuth and elevation
-        Eigen::MatrixXd PhiAOD = generatePhiAOD(los, clusterPowersWithScalingFactors, lsp.azimuthSpreadDeparture, lsp.riceanK, losPhiAOD);
-        Eigen::MatrixXd PhiAOA = generatePhiAOA(los, clusterPowersWithScalingFactors, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA);
-        Eigen::MatrixXd ThetaZOD = generateThetaZOD(los, clusterPowersWithScalingFactors, lsp.zenithSpreadDeparture, lsp.riceanK, losThetaZOD);
-        Eigen::MatrixXd ThetaZOA = generateThetaZOA(los, clusterPowersWithScalingFactors, lsp.zenithSpreadArrival, lsp.riceanK, losThetaZOA);
-
+        Eigen::MatrixXd PhiAOA = generateAOAorAOD_n_m(los, clusterPowersWithScalingFactors, lsp.azimuthSpreadArrival, lsp.riceanK, losPhiAOA, 0);
+        Eigen::MatrixXd PhiAOD = generateAOAorAOD_n_m(los, clusterPowersWithScalingFactors, lsp.azimuthSpreadDeparture, lsp.riceanK, losPhiAOD, 1);
+        Eigen::MatrixXd ThetaZOA = generateZOAorZOD_n_m(los, clusterPowersWithScalingFactors, lsp.zenithSpreadArrival, lsp.riceanK, losThetaZOA,2);
+        Eigen::MatrixXd ThetaZOD = generateZOAorZOD_n_m(los, clusterPowersWithScalingFactors, lsp.zenithSpreadDeparture, lsp.riceanK, losThetaZOD, 3);
+        
         if (los) {
             std::cout << "PhiAOD for UT transmitter " << transmitter.id << ": \n";
             std::cout << PhiAOD(0, 0) << std::endl << PhiAOD.bottomRows(PhiAOD.rows() - 1) << std::endl << std::endl;
@@ -1641,8 +1334,6 @@ int main() {
             std::cout << "ThetaZOA for UT receiver " << receiver.id << ": \n";
             std::cout << ThetaZOA << std::endl << std::endl;
         }
-
-
 
         std::cout << "Coupling of rays within a cluster for both azimuth and elevation " << std::endl;
         randomCouplingRays(PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, los);
@@ -1675,20 +1366,13 @@ int main() {
             std::cout << AS[i] << " ";
         }
         std::cout << std::endl;
-
         std::cout << "Mean Angles for AOD | AOA | ZOD | ZOA : " << std::endl;
         for (size_t i = 4; i < 8 && i < AS.size(); ++i) {
             std::cout << AS[i] << " ";
         }
         std::cout << std::endl << std::endl;
 
-
-
-
-
-
         //_____________STEP_9_______________//
-
         //XPR
         Eigen::MatrixXd XPR = generateXPR(los, clusterPowers);
         std::cout << "Generate the cross polarization power ratios  K_n_m: \n";
@@ -1709,7 +1393,7 @@ int main() {
             }
             std::cout << std::endl;
         }
-
+        //_____________STEP_11_______________//
         if (!los) {
             Eigen::MatrixXcd channelСoefficients = generateNLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
             Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
