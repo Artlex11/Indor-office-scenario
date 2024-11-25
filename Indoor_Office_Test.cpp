@@ -290,9 +290,9 @@ public:
         // Inverse rotation matrix
         MatrixXd inv_R(3, 3);
         inv_R <<
-            cos(alpha) * cos(beta), sin(alpha)* cos(beta), -sin(beta),
-            cos(alpha)* sin(beta)* sin(gamma) - sin(alpha) * cos(gamma), sin(alpha)* sin(beta)* sin(gamma) + cos(alpha) * cos(gamma), cos(beta)* sin(gamma),
-            cos(alpha)* sin(beta)* cos(gamma) + sin(alpha) * sin(gamma), sin(alpha)* sin(beta)* cos(gamma) - cos(alpha) * sin(gamma), cos(beta)* cos(gamma);
+            cos(alpha) * cos(beta), sin(alpha) * cos(beta), -sin(beta),
+            cos(alpha) * sin(beta) * sin(gamma) - sin(alpha) * cos(gamma), sin(alpha) * sin(beta) * sin(gamma) + cos(alpha) * cos(gamma), cos(beta) * sin(gamma),
+            cos(alpha) * sin(beta) * cos(gamma) + sin(alpha) * sin(gamma), sin(alpha) * sin(beta) * cos(gamma) - cos(alpha) * sin(gamma), cos(beta) * cos(gamma);
         //std::cout << inv_R;
 
         VectorXd xyz(3);
@@ -308,7 +308,20 @@ public:
 
 
 
+        while (phi < -180) {
+            phi += 360; // Добавляем 360, пока значение не станет >= -180
+        }
+        while (phi > 180) {
+            phi -= 360; // Вычитаем 360, пока значение не станет <= 180
+        }
 
+        // Нормализация theta в диапазоне [0, 180]
+        while (theta < 0) {
+            theta += 180; // Добавляем 180, пока значение не станет >= 0
+        }
+        while (theta > 180) {
+            theta -= 180; // Вычитаем 180, пока значение не станет <= 180
+        }
 
         Eigen::Vector2d fieldPattern;
         phi_LSC = phi_LSC * 180 / M_PI;
@@ -328,7 +341,7 @@ public:
 
 
 
-        double A3D_PowerPattern = 8 - std::min((-1) * (AverticalPowerPattern + AhorizontalPowerPattern), 30.0); // знак "-" в начале формулы
+        double A3D_PowerPattern =  - std::min((-1) * (AverticalPowerPattern + AhorizontalPowerPattern), 30.0); // знак "-" в начале формулы
 
         A3D_PowerPattern = pow(10, A3D_PowerPattern / 20);
 
@@ -377,26 +390,41 @@ public:
 
     */
 
-    Eigen::MatrixXd generateAntennaElements() const
+    MatrixXd generateAntennaElements() const
     {
-        Eigen::MatrixXd locationMatrixAntennaElements(16, 3);
+        double alpha = bearingAngle;
+        double beta = downtiltAngle;
+        double gamma = slantAngle;
 
-        locationMatrixAntennaElements.row(0) << -3 * wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, -3 * wavelength * cos(bearingAngle) * cos(slantAngle) / 4, wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        MatrixXd R(3, 3);
+        R <<
+            cos(alpha) * cos(beta) ,  cos(alpha)* sin(beta)* sin(gamma) - sin(alpha) * cos(gamma), cos(alpha)* sin(beta)* cos(gamma) + sin(alpha) * sin(gamma),
+            sin(alpha)* cos(beta) , sin(alpha) * sin(beta) * sin(gamma) + cos(alpha) * cos(gamma), sin(alpha)* sin(beta)* cos(gamma) - cos(alpha) * sin(gamma),
+            - sin(beta), cos(beta) * sin(gamma), cos(beta)* cos(gamma);
+
+
+
+        MatrixXd locationMatrixAntennaElements(16, 3);
+
+        locationMatrixAntennaElements.row(0) << 0 , -3 * wavelength  / 4, wavelength / 4;
         locationMatrixAntennaElements.row(8) = locationMatrixAntennaElements.row(0);
-        locationMatrixAntennaElements.row(1) << -wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, -wavelength * cos(bearingAngle) * cos(slantAngle) / 4, wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(1) << 0 , -wavelength / 4, wavelength / 4 ;
         locationMatrixAntennaElements.row(9) = locationMatrixAntennaElements.row(1);
-        locationMatrixAntennaElements.row(2) << wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, wavelength* cos(bearingAngle)* cos(slantAngle) / 4, wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(2) << 0 , wavelength / 4, wavelength / 4 ;
         locationMatrixAntennaElements.row(10) = locationMatrixAntennaElements.row(2);
-        locationMatrixAntennaElements.row(3) << 3 * wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, 3 * wavelength * cos(bearingAngle) * cos(slantAngle) / 4, wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(3) << 0 , 3 * wavelength / 4, wavelength / 4 ;
         locationMatrixAntennaElements.row(11) = locationMatrixAntennaElements.row(3);
-        locationMatrixAntennaElements.row(4) << -3 * wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, -3 * wavelength * cos(bearingAngle) * cos(slantAngle) / 4, -wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(4) << 0 , -3 * wavelength / 4, -wavelength / 4 ;
         locationMatrixAntennaElements.row(12) = locationMatrixAntennaElements.row(4);
-        locationMatrixAntennaElements.row(5) << -wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, -wavelength * cos(bearingAngle) * cos(slantAngle) / 4, -wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(5) << 0 , -wavelength  / 4, -wavelength / 4 ;
         locationMatrixAntennaElements.row(13) = locationMatrixAntennaElements.row(5);
-        locationMatrixAntennaElements.row(6) << wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, wavelength* cos(bearingAngle)* cos(slantAngle) / 4, -wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(6) << 0 , wavelength / 4, -wavelength / 4 ;
         locationMatrixAntennaElements.row(14) = locationMatrixAntennaElements.row(6);
-        locationMatrixAntennaElements.row(7) << 3 * wavelength * cos(M_PI / 2 + bearingAngle) * cos(downtiltAngle) / 4, 3 * wavelength * cos(bearingAngle) * cos(slantAngle) / 4, -wavelength / 4 * cos(downtiltAngle) * cos(slantAngle);
+        locationMatrixAntennaElements.row(7) << 0 , 3 * wavelength / 4, -wavelength / 4 ;
         locationMatrixAntennaElements.row(15) = locationMatrixAntennaElements.row(7);
+
+        locationMatrixAntennaElements = (R * locationMatrixAntennaElements.transpose()).transpose();
+        
         return locationMatrixAntennaElements;
     }
 };
@@ -482,12 +510,12 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
         if (los) {
             std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения 
-            power = exp(((-1) * clusterDelays[n] * (los_r_tau - 1))   / (los_r_tau * delaySpread)) * pow(10, (-0.1 * shadowing));
+            power = exp(((-1) * clusterDelays[n] * (los_r_tau - 1)) / los_r_tau / delaySpread) * pow(10, (-0.1 * shadowing));
         }
         else {
             std::normal_distribution<> shadowFadingDist(0, 9); // is the per cluster shadowing term in [dB] NLOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp(((-1) * clusterDelays[n] * (nlos_r_tau - 1))   / (nlos_r_tau * delaySpread)) * pow(10, (-0.1 * shadowing));
+            power = exp(((-1) * clusterDelays[n] * (nlos_r_tau - 1))   / nlos_r_tau / delaySpread) * pow(10, (-0.1 * shadowing));
         }
         clusterPowers[n] = power;
     }
@@ -530,9 +558,14 @@ double nlos_C_ZSD = 0.375;
 std::vector<double> los_C = { los_C_ASA , los_C_ASD , los_C_ZSA , los_C_ZSD };
 std::vector<double> nlos_C = { nlos_C_ASA , nlos_C_ASD , nlos_C_ZSA , nlos_C_ZSD };
 
-//____table_7.5.3________Ray_offset_angles_within_a_cluster,_given_for_rms_angle_spread_normalized_to_1
-std::vector<double> am = { 0.0447, -0.0447 ,0.1413 ,-0.1413,0.2492 ,-0.2492 ,0.3715 ,-0.3715 ,0.5129 ,-0.5129 ,
-    0.6797 ,-0.6797, 0.8844 , -0.8844,1.1481,-1.1481, 1.5195 , -1.5195, 2.1551 , -2.1551 };
+
+
+
+std::vector<double> am{ 0.0447, -0.0447, 0.1413, -0.1413, 0.2492, -0.2492,
+    0.3715, -0.3715, 0.5129, -0.5129, 0.6797, -0.6797,
+    0.8844, -0.8844, 1.1481, -1.1481, 1.5195, -1.5195,
+    2.1551, -2.1551 };
+
 
 //_________________________________________________AOA/AOD____________________________________________________//
 Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& clusterPowers, double ASAorASD, double riceanK, double AOAorAOD, int AOA_0_or_AOD_1) {
@@ -543,43 +576,44 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
     UniformGenerator<double> XnDist(-1.0, 1.0);
 
     double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
-    
+
     double X1;
     double Y1;
     double AOAorAOD_n1;
-    
-    if (los) 
+
+    if (los)
     {
         VectorXd AOAorAOD_n(clusterPowers.size());
         MatrixXd AOAorAOD_n_m(clusterPowers.size() + 1, 20);
 
-        for (int n = 0; n < clusterPowers.size()  ; n++)
+        for (int n = 0; n < clusterPowers.size(); n++)
         {
-            double Xn = XnDist(); // Xn ~ uniform(-1,1)
-            double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+            double Xn = XnDist();
+            double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) - (0.028 * riceanK) + 1.1035);
             double Yn = YnDist();
 
-            AOAorAOD_n[n] = 2 * (ASAorASD / 1.4) * sqrt( - log(clusterPowers[n] / maxPower)) / C_phi; // Применение уравнения (7.5-9)
+            AOAorAOD_n(n) = 2 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower)) / C_phi;
 
-            if (n == 0) // добавляем 1 луч
+            if (n == 0)
             {
-                X1 = Xn; Y1 = Yn; AOAorAOD_n1 = AOAorAOD_n[n];
-                AOAorAOD_n_m(n, 0) = AOAorAOD;
-                
+                X1 = Xn; Y1 = Yn; AOAorAOD_n1 = AOAorAOD_n(n);
+                //AOAorAOD_n_m(n, 0) = AOAorAOD;
+
             }
-           
+
             AOAorAOD_n(n) = AOAorAOD_n(n) * Xn + Yn + AOAorAOD - AOAorAOD_n1 * X1 - Y1;
+
             for (int m = 0; m < 20; ++m)
             {
-                AOAorAOD_n_m(n + 1 , m) = AOAorAOD_n(n) + los_C[AOA_0_or_AOD_1] * am[m];
-            }    
+                AOAorAOD_n_m(n + 1, m) = AOAorAOD_n(n) + los_C[AOA_0_or_AOD_1] * am[m];
+            }
         }
         return AOAorAOD_n_m;
     }
     else // случай NLOS
     {
-        VectorXd AOAorAOD_n(clusterPowers.size()  );
-        MatrixXd AOAorAOD_n_m(clusterPowers.size() , 20);
+        VectorXd AOAorAOD_n(clusterPowers.size());
+        MatrixXd AOAorAOD_n_m(clusterPowers.size(), 20);
 
         for (int n = 0; n < clusterPowers.size(); n++)
         {
@@ -587,13 +621,13 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
             double C_phi = 1.273;
             double Yn = YnDist();
 
-            AOAorAOD_n(n) = 2 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower) / C_phi); // Применение уравнения (7.5-9) 
+            AOAorAOD_n(n) = 2 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower) / C_phi);
 
             AOAorAOD_n(n) = AOAorAOD_n(n) * Xn + Yn + AOAorAOD;
 
             for (int m = 0; m < 20; ++m)
             {
-                AOAorAOD_n_m(n , m) = AOAorAOD_n(n) + nlos_C[AOA_0_or_AOD_1] * am[m];
+                AOAorAOD_n_m(n, m) = AOAorAOD_n(n) + nlos_C[AOA_0_or_AOD_1] * am[m];
             }
         }
         return AOAorAOD_n_m;
@@ -605,11 +639,12 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
 
     ZOAorZOD = ZOAorZOD * 180 / M_PI;
     ZSAorZSD = pow(10, ZSAorZSD);
+
     GaussGenerator YnDist(0, (ZSAorZSD / 7) * (ZSAorZSD / 7));
     UniformGenerator<double> XnDist(-1.0, 1.0);
 
     double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
-    //n - должен быть размер кластера задержек
+
     double X1;
     double Y1;
     double ZOAorZOD_n1;
@@ -623,12 +658,12 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
             if (los)
             {
                 double Xn = XnDist();
-                double C_phi = 1.184 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) + (0.028 * riceanK) + 1.035);
+                double C_phi = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) - (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
                 double Yn = YnDist();
 
-                ZOAorZOD_n(n) = (2 * (ZSAorZSD / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
+                ZOAorZOD_n(n) = -ZSAorZSD * log(clusterPowers[n] / maxPower) / C_phi;
 
-                if (n == 0) // добавляем 1 луч
+                if (n == 0)
                 {
                     X1 = Xn; Y1 = Yn; ZOAorZOD_n1 = ZOAorZOD_n(n);
                     ZOAorZOD_n_m(n, 0) = ZOAorZOD;
@@ -638,7 +673,7 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
                 for (int m = 0; m < 20; ++m)
                 {
                     ZOAorZOD_n_m(n + 1, m) = ZOAorZOD_n(n) + los_C[ZOA_2_or_ZOD_3] * am[m];
-                }   
+                }
             }
         }
         return ZOAorZOD_n_m;
@@ -652,7 +687,7 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
             double Xn = XnDist();
             double C_phi = 1.184;
             double Yn = YnDist();
-            ZOAorZOD_n(n) = (2 * (ZSAorZSD / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi; // Применение уравнения (7.5-9) 
+            ZOAorZOD_n(n) = (2 * (ZSAorZSD / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi;
 
             ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD;
 
@@ -666,7 +701,7 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
 }
 
 
-//_________________________________________A_1________________________________________________________//
+//_________________________________________A_1_A_2________________________________________________________//
 std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vector<double>& clasterPowers, MatrixXd& AOD, MatrixXd& AOA, MatrixXd& ZOD, MatrixXd& ZOA) {
     std::vector<double> ASandMeanAnglesforAOD_AOA_ZOD_ZOA;
 
@@ -681,18 +716,42 @@ std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vec
     std::complex<double> weighted_sumZOD(0.0, 0.0);
     double weighted_sumPowers = 0.0;
 
+
+
+
+
     // Вычисление взвешенной суммы комплексных экспонент
     for (int n = 0; n < clasterPowers.size(); ++n) {
-        if (n == 0 && los) { continue; }
         for (int m = 0; m < 20; ++m) {
-            weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n, m)));
-            weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n, m)));
-            weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n, m)));
-            weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n, m)));
-            weighted_sumPowers += (clasterPowers[n] / 20);
+            if (los && clasterPowers.size() == 1) {
+                weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n + 1, m)));
+                weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n + 1, m)));
+                weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n + 1, m)));
+                weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n + 1, m)));
+                weighted_sumPowers += (clasterPowers[n] / 20);
+                continue;
+            }
+            else if (los) {
+                weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n + 1, m)));
+                weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n + 1, m)));
+                weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n + 1, m)));
+                weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n + 1, m)));
+                weighted_sumPowers += (clasterPowers[n] / 20);
+            }
+            else if (!los) {
+                weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n, m)));
+                weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n, m)));
+                weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n, m)));
+                weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n, m)));
+                weighted_sumPowers += (clasterPowers[n] / 20);
+            }
+
 
         }
     }
+
+
+
 
     // Вычисление углового рассеяния
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumAOD / weighted_sumPowers))));
@@ -862,7 +921,6 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
     thetaZOD_n_m = thetaZOD_n_m * M_PI / 180;
     thetaZOA_n_m = thetaZOA_n_m * M_PI / 180;
 
-    std::complex<double> j(0.0, 1.0);
     Eigen::MatrixXcd channelCoefficients_u_s_n(256, clusterPowers.size() + 4);//16*16 комбинаций t-u
     channelCoefficients_u_s_n.setZero();
 
@@ -894,10 +952,10 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
                         Eigen::Matrix2cd XPR_and_InitialRandomPhases;
                         XPR_and_InitialRandomPhases <<
-                            exp(j * initialPhases(n, m * 4)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
-                            exp(j * initialPhases(n, m * 4 + 3));
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 1))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 2))),
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 3)));
 
                         double tx = sphericalUnitVector_tx.transpose() * transmitter.generateAntennaElements().row(s).transpose();
                         double rx = sphericalUnitVector_rx.transpose() * receiver.generateAntennaElements().row(u).transpose();
@@ -911,7 +969,7 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
                         std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
-                        channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
+                        channelCoefficients_u_s_n(s + u + pair, n + 4) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
 
                     }
                     else if (n < 2) {
@@ -931,10 +989,10 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
                         Eigen::Matrix2cd XPR_and_InitialRandomPhases;
                         XPR_and_InitialRandomPhases <<
-                            exp(j * initialPhases(n, m * 4)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
-                            exp(j * initialPhases(n, m * 4 + 3));
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 1))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 2))),
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 3)));
 
 
                         double tx = sphericalUnitVector_tx.transpose() * transmitter.generateAntennaElements().row(s).transpose();
@@ -954,20 +1012,20 @@ Eigen::MatrixXcd generateNLOSChannelCoefficients(const UserTerminal& transmitter
 
 
                         if (m < 8 || m >17) {
-                            channelCoefficients_u_s_n(s + u + pair, 3 * n) += 0.05 * channelCoefficients_n;
+                            channelCoefficients_u_s_n(s + u + pair, 3 * n) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
                         else if ((m > 8 && m < 12) || (m > 15 && m < 18)) {
-                            channelCoefficients_u_s_n(s + u + pair, 3 * n + 1) += 0.05 * channelCoefficients_n;
+                            channelCoefficients_u_s_n(s + u + pair, 3 * n + 1) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
                         else {
-                            channelCoefficients_u_s_n(s + u + pair, 3 * n + 2) += 0.05 * channelCoefficients_n;
+                            channelCoefficients_u_s_n(s + u + pair, 3 * n + 2) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
                     }
                 }
             }
             pair = pair + 15;
         }
-        channelCoefficients_u_s_n.col(n) *= sqrt(clusterPowers[n]);
+        //channelCoefficients_u_s_n.col(n) *= sqrt(clusterPowers[n] / 20);
     }
     return channelCoefficients_u_s_n;
 }
@@ -983,7 +1041,6 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
     thetaZOD_n_m = thetaZOD_n_m * M_PI / 180;
     thetaZOA_n_m = thetaZOA_n_m * M_PI / 180;
 
-    std::complex<double> j(0.0, 1.0);
     Eigen::MatrixXcd channelCoefficients_u_s_n(256, clusterPowers.size() + 4);//16*16 комбинаций t-u
     channelCoefficients_u_s_n.setZero();
 
@@ -1012,10 +1069,10 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
 
                         Eigen::Matrix2cd XPR_and_InitialRandomPhases;
                         XPR_and_InitialRandomPhases <<
-                            exp(j * initialPhases(n, m * 4)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
-                            exp(j * initialPhases(n, m * 4 + 3));
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4))),
+                            sqrt(1 / XRP(n, m))* exp (std::complex<double>(0.0, initialPhases(n, m * 4 + 1))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 2))),
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 3)));
 
                         double tx = sphericalUnitVector_tx.transpose() * transmitter.generateAntennaElements().row(s).transpose();
                         double rx = sphericalUnitVector_rx.transpose() * receiver.generateAntennaElements().row(u).transpose();
@@ -1029,7 +1086,7 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         std::complex<double> exp_factor_tx = std::complex<double>(cos(2 * M_PI * tx / 0.1), sin(2 * M_PI * tx / 0.1)); //exp(j) * exp(2 * M_PI * tx / 0.1);
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
-                        channelCoefficients_u_s_n(s + u + pair, n + 4) += channelCoefficients_n;
+                        channelCoefficients_u_s_n(s + u + pair, n + 4) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                     }
                     else if (n > 0 && n < 3) {
                         Eigen::Vector2d F_tx = transmitter.FieldPattern(thetaZOD_n_m(n, m), phiAOD_n_m(n, m), ksi_tx);
@@ -1045,10 +1102,10 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
 
                         Eigen::Matrix2cd XPR_and_InitialRandomPhases;
                         XPR_and_InitialRandomPhases <<
-                            exp(j * initialPhases(n, m * 4)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 1)),
-                            sqrt(1 / XRP(n, m))* exp(j * initialPhases(n, m * 4 + 2)),
-                            exp(j * initialPhases(n, m * 4 + 3));
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 1))),
+                            sqrt(1 / XRP(n, m))* exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 2))),
+                            exp(std::complex<double>(0.0, initialPhases(n, m * 4 + 3)));
 
                         double tx = sphericalUnitVector_tx.transpose() * transmitter.generateAntennaElements().row(s).transpose();
                         double rx = sphericalUnitVector_rx.transpose() * receiver.generateAntennaElements().row(u).transpose();
@@ -1063,13 +1120,13 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         std::complex<double> channelCoefficients_n = temp2(0, 0) * exp_factor_rx * exp_factor_tx;
 
                         if (m < 8 || m >17) {
-                            channelCoefficients_u_s_n(s + u + pair, 3 * n - 2) += 0.05 * channelCoefficients_n;
+                            channelCoefficients_u_s_n(s + u + pair, 3 * n - 2) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
                         else if ((m > 8 && m < 12) || (m > 15 && m < 18)) {
-                            channelCoefficients_u_s_n(s + u + pair, 3 * n + -1) += 0.05 * channelCoefficients_n;
+                            channelCoefficients_u_s_n(s + u + pair, 3 * n + -1) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
                         else {
-                            channelCoefficients_u_s_n(s + u + pair, 3 * n) += 0.05 * channelCoefficients_n;
+                            channelCoefficients_u_s_n(s + u + pair, 3 * n) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
 
                     }
@@ -1113,12 +1170,11 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
             pair = pair + 15;
         }
         if (n != 0) {
-            channelCoefficients_u_s_n.col(n) *= sqrt(clusterPowers[n]);
             channelCoefficients_u_s_n.col(n) *= sqrt(1 / (riceanK + 1));
         }
-        else {
-            channelCoefficients_u_s_n.col(n) *= sqrt(riceanK / (riceanK + 1));
-        }
+        
+        channelCoefficients_u_s_n.col(0) *= sqrt(riceanK / (riceanK + 1));
+        
     }
 
     return channelCoefficients_u_s_n;
@@ -1195,10 +1251,9 @@ int main() {
     double userHeight = 1.0; // Высота пользователей 
 
     for (int i = 1; i <= 12; ++i) {
-        //double bearing = (rand() % 90) * M_PI / 180.0; // Угол поворота 
-        double bearing = (std::rand() % 360) * M_PI / 180.0;
-        double downtilt = (rand() % 90) * M_PI / 180.0; // Угол наклона
-        double slant = (rand() % 90) * M_PI / 180.0; // Угол наклона
+        double bearing = (rand() % 360) * M_PI / 180.0;
+        double downtilt = (rand() % 180) * M_PI / 180.0; // Угол наклона
+        double slant = (rand() % 360) * M_PI / 180.0; // Угол наклона
 
         UserTerminal newUT(i, 0, 0, userHeight, bearing, downtilt, slant);
         bool isValidPosition = false;
@@ -1304,7 +1359,7 @@ int main() {
         }
 
         // Выводы значений 
-        std::cout << "Cluster delays for User " << transmitter.id << " and User " << receiver.id << ":\n\n";
+        std::cout << "Cluster delays for UT " << ":\n\n";
         int j = 1;
         for (const auto& delay : clusterDelays) {
             std::cout << "-delay for power #" << j << " : " << delay << "\n";
@@ -1318,7 +1373,7 @@ int main() {
         }
         std::cout << std::endl << std::endl;
 
-        std::cout << "Cluster powers with scaling factors for User " << transmitter.id << " and User " << receiver.id << ": ";
+        std::cout << "Cluster powers with scaling factors " << ": ";
         for (const auto& powerWithScalingFactors : clusterPowersWithScalingFactors) {
             std::cout << powerWithScalingFactors << " ";
         }
