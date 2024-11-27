@@ -60,6 +60,33 @@ private:
     std::conditional_t<std::is_integral<T>::value, std::uniform_int_distribution<T>, std::uniform_real_distribution<T>> distribution_;
 };
 
+template<typename T>
+class UniformGeneratorFromVector {
+public:
+    // Конструктор, принимающий вектор значений
+    UniformGeneratorFromVector(const std::vector<T>& values)
+        : values_(values) {
+        // Генерация семени
+        std::seed_seq seeds{
+            static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count()),
+            static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count()),
+            static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id())),
+        };
+        engine_.seed(seeds);
+        // Инициализация распределения для выбора индекса
+        distribution_ = std::uniform_int_distribution<size_t>(0, values_.size() - 1);
+    }
+
+    // Оператор вызова для получения случайного элемента
+    T operator()() {
+        return values_[distribution_(engine_)];
+    }
+
+private:
+    std::mt19937 engine_; // Генератор случайных чисел
+    std::vector<T> values_; // Вектор значений
+    std::uniform_int_distribution<size_t> distribution_; // Распределение для выбора индекса
+};
 
 static std::pair<std::vector<double>, std::vector<double>> sort_with_indices(const std::vector<double>& vector1, const std::vector<double>& vector2)
 {
@@ -308,20 +335,7 @@ public:
 
 
 
-        while (phi < -180) {
-            phi += 360; // Добавляем 360, пока значение не станет >= -180
-        }
-        while (phi > 180) {
-            phi -= 360; // Вычитаем 360, пока значение не станет <= 180
-        }
-
-        // Нормализация theta в диапазоне [0, 180]
-        while (theta < 0) {
-            theta += 180; // Добавляем 180, пока значение не станет >= 0
-        }
-        while (theta > 180) {
-            theta -= 180; // Вычитаем 180, пока значение не станет <= 180
-        }
+        
 
         Eigen::Vector2d fieldPattern;
         phi_LSC = phi_LSC * 180 / M_PI;
@@ -367,12 +381,12 @@ public:
         double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
         // Углы AOA (угол от приемника к передатчику)
-        losThetaZOA = acos(dz / distance); // Угловая координата
-        losPhiAOA = atan2(dy, dx); // Азимутальная координата
+        losThetaZOA = acos(-dz / distance); // Угловая координата
+        losPhiAOA = atan2(-dy, -dx); // Азимутальная координата
 
         // Углы AOD (угол от передатчика к приемнику)
-        losThetaZOD = acos(-dz / distance); // Угловая координата 
-        losPhiAOD = atan2(-dy, -dx);         // Азимутальная координата 
+        losThetaZOD = acos(dz / distance); // Угловая координата 
+        losPhiAOD = atan2(dy, dx);         // Азимутальная координата 
     }
 
     /*
@@ -480,14 +494,13 @@ std::vector<double> generateClusterDelays(bool los, double delaySpread,  double 
     std::sort(delays_tau.begin(), delays_tau.end());
 
     // дополнительный параметр для LOS лучей, вычисляется через K-фактор, дальше не учитывается
-    /*
-    // Если LOS, применяем масштабирование (The scaled delays are not to be used in cluster power generation. )
-    if (riceanK > 0) { // Если K-фактор положителен
-        double scalingFactor = (0.000017 * riceanK * riceanK * riceanK) + (0.0002 * riceanK * riceanK) + (0.0433 *riceanK) + 0.7705;
-
-        delay[0] /= scalingFactor; // Масштабирование задержек
+    if (los) { // Если K-фактор положителен
+        double scalingFactor = (0.000017 * riceanK * riceanK * riceanK) + (0.0002 * riceanK * riceanK) - (0.0433 * riceanK) + 0.7705;
+        for (int n = 0; n < delays_tau.size(); ++n)
+        {
+            delays_tau[n] /= scalingFactor; // Масштабирование задержек
+        }
     }
-    */
     return delays_tau; // Возвращаем нормализованные задержки
 };
 
@@ -508,14 +521,14 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
     for (size_t n = 0; n < clusterDelays.size(); ++n) {
 
         if (los) {
-            std::normal_distribution<> shadowFadingDist(0, 36); // is the per cluster shadowing term in [dB] LOS.
+            std::normal_distribution<> shadowFadingDist(0.0, 6.0); // is the per cluster shadowing term in [dB] LOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения 
-            power = exp(((-1) * clusterDelays[n] * (los_r_tau - 1)) / los_r_tau / delaySpread) * pow(10, (-0.1 * shadowing));
+            power = exp(((-1.0) * clusterDelays[n] * (los_r_tau - 1.0)) / los_r_tau / delaySpread) * pow(10, (-0.1 *  shadowing));
         }
         else {
-            std::normal_distribution<> shadowFadingDist(0, 9); // is the per cluster shadowing term in [dB] NLOS.
+            std::normal_distribution<> shadowFadingDist(0.0, 3.0); // is the per cluster shadowing term in [dB] NLOS.
             double shadowing = shadowFadingDist(gen); // Генерация затенения
-            power = exp(((-1) * clusterDelays[n] * (nlos_r_tau - 1))   / nlos_r_tau / delaySpread) * pow(10, (-0.1 * shadowing));
+            power = exp(((-1.0) * clusterDelays[n] * (nlos_r_tau - 1.0))   / nlos_r_tau / delaySpread) * pow(10, (-0.1 * shadowing));
         }
         clusterPowers[n] = power;
     }
@@ -526,21 +539,7 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
     for (size_t n = 0; n < clusterPowers.size(); ++n) {
         clusterPowers[n] = clusterPowers[n] / sumclusterPowers; // Нормализуем по суммарной мощности    
     }
-    maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
-
-    std::vector<double> clusterPowers_main;
-
-    double threshold = maxPower * 0.00316; // Порог для удаления
-    for (size_t n = 0; n < clusterPowers.size(); ++n) {
-        if (clusterPowers[n] > threshold)
-        {
-            clusterPowers_main.emplace_back(clusterPowers[n]);
-
-        }
-        else { indicesToDelete.push_back(n); }
-    }
-
-    return clusterPowers_main; // Возвращаем нормализованные мощности кластеров
+    return clusterPowers; // Возвращаем нормализованные мощности кластеров
 };
 
 //________________________________________________STEP_7___________________________________________________//
@@ -548,12 +547,12 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
 double los_C_ASA = 8.0;
 double los_C_ASD = 5.0;
 double los_C_ZSA = 9.0;
-double los_C_ZSD = 0.375;
+double los_C_ZSD = 0.375 * pow(10, -1.43 * log(1 + 30) + 2.228);
 
 double nlos_C_ASA = 11.0;
 double nlos_C_ASD = 5.0;
 double nlos_C_ZSA = 9.0;
-double nlos_C_ZSD = 0.375;
+double nlos_C_ZSD = 0.375 * pow(10, 1.08);
 
 std::vector<double> los_C = { los_C_ASA , los_C_ASD , los_C_ZSA , los_C_ZSD };
 std::vector<double> nlos_C = { nlos_C_ASA , nlos_C_ASD , nlos_C_ZSA , nlos_C_ZSD };
@@ -572,11 +571,11 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
 
     AOAorAOD = AOAorAOD * 180 / M_PI;
     ASAorASD = pow(10, ASAorASD);
-    GaussGenerator YnDist(0.0, (ASAorASD / 7) * (ASAorASD / 7));
-    UniformGenerator<double> XnDist(-1.0, 1.0);
+    GaussGenerator YnDist(0.0, (ASAorASD / 7.0));
+    UniformGeneratorFromVector <int> XnDist(std::vector<int>{ -1, 1 });
 
     double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
-
+    double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) - (0.028 * riceanK) + 1.1035);
     double X1;
     double Y1;
     double AOAorAOD_n1;
@@ -585,19 +584,20 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
     {
         VectorXd AOAorAOD_n(clusterPowers.size());
         MatrixXd AOAorAOD_n_m(clusterPowers.size() + 1, 20);
-
+        
         for (int n = 0; n < clusterPowers.size(); n++)
         {
             double Xn = XnDist();
-            double C_phi = 1.273 * ((0.0001 * riceanK * riceanK * riceanK) - (0.002 * riceanK * riceanK) - (0.028 * riceanK) + 1.1035);
             double Yn = YnDist();
 
-            AOAorAOD_n(n) = 2 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower)) / C_phi;
+            AOAorAOD_n(n) = 2.0 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower)) / C_phi;
 
             if (n == 0)
             {
-                X1 = Xn; Y1 = Yn; AOAorAOD_n1 = AOAorAOD_n(n);
-                //AOAorAOD_n_m(n, 0) = AOAorAOD;
+                X1 = Xn;
+                Y1 = Yn;
+                AOAorAOD_n1 = AOAorAOD_n(n);
+                AOAorAOD_n_m(n, 0) = AOAorAOD;
 
             }
 
@@ -606,6 +606,12 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
             for (int m = 0; m < 20; ++m)
             {
                 AOAorAOD_n_m(n + 1, m) = AOAorAOD_n(n) + los_C[AOA_0_or_AOD_1] * am[m];
+                while (AOAorAOD_n_m(n + 1, m) < -180) {
+                    AOAorAOD_n_m(n + 1, m) += 360; 
+                }
+                while (AOAorAOD_n_m(n + 1, m) > 180) {
+                    AOAorAOD_n_m(n + 1, m) -= 360; 
+                }
             }
         }
         return AOAorAOD_n_m;
@@ -614,20 +620,27 @@ Eigen::MatrixXd generateAOAorAOD_n_m(bool los, const std::vector<double>& cluste
     {
         VectorXd AOAorAOD_n(clusterPowers.size());
         MatrixXd AOAorAOD_n_m(clusterPowers.size(), 20);
+        C_phi = 1.273;
 
         for (int n = 0; n < clusterPowers.size(); n++)
         {
-            double Xn = XnDist(); // Xn ~ uniform(-1,1)
-            double C_phi = 1.273;
+            double Xn = XnDist();
             double Yn = YnDist();
 
-            AOAorAOD_n(n) = 2 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower) / C_phi);
+            AOAorAOD_n(n) = 2.0 * (ASAorASD / 1.4) * sqrt(-log(clusterPowers[n] / maxPower)) / C_phi;
 
             AOAorAOD_n(n) = AOAorAOD_n(n) * Xn + Yn + AOAorAOD;
 
             for (int m = 0; m < 20; ++m)
             {
+
                 AOAorAOD_n_m(n, m) = AOAorAOD_n(n) + nlos_C[AOA_0_or_AOD_1] * am[m];
+                while (AOAorAOD_n_m(n , m) < -180) {
+                    AOAorAOD_n_m(n , m) += 360; 
+                }
+                while (AOAorAOD_n_m(n , m) > 180) {
+                    AOAorAOD_n_m(n , m) -= 360; 
+                }
             }
         }
         return AOAorAOD_n_m;
@@ -640,60 +653,75 @@ Eigen::MatrixXd generateZOAorZOD_n_m(bool los, const std::vector<double>& cluste
     ZOAorZOD = ZOAorZOD * 180 / M_PI;
     ZSAorZSD = pow(10, ZSAorZSD);
 
-    GaussGenerator YnDist(0, (ZSAorZSD / 7) * (ZSAorZSD / 7));
-    UniformGenerator<double> XnDist(-1.0, 1.0);
+    GaussGenerator YnDist(0.0, (ZSAorZSD / 7.0));
+
+    UniformGeneratorFromVector <int> XnDist(std::vector<int>{ -1, 1 });
 
     double maxPower = *max_element(clusterPowers.begin(), clusterPowers.end());
 
+
+    double C_theta = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) - (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
     double X1;
     double Y1;
     double ZOAorZOD_n1;
+    double meanOffsetZOD = 0.0;
 
     if (los) // случай LOS
     {
         VectorXd ZOAorZOD_n(clusterPowers.size());
         MatrixXd ZOAorZOD_n_m(clusterPowers.size() + 1, 20);
-        for (int n = 0; n < clusterPowers.size(); n++)
-        {
-            if (los)
-            {
-                double Xn = XnDist();
-                double C_phi = 1.184 * ((0.0002 * riceanK * riceanK * riceanK) - (0.0077 * riceanK * riceanK) + (0.0339 * riceanK) + 1.3086);
-                double Yn = YnDist();
-
-                ZOAorZOD_n(n) = -ZSAorZSD * log(clusterPowers[n] / maxPower) / C_phi;
-
-                if (n == 0)
-                {
-                    X1 = Xn; Y1 = Yn; ZOAorZOD_n1 = ZOAorZOD_n(n);
-                    ZOAorZOD_n_m(n, 0) = ZOAorZOD;
-                }
-
-                ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD - ZOAorZOD_n1 * X1 - Y1;
-                for (int m = 0; m < 20; ++m)
-                {
-                    ZOAorZOD_n_m(n + 1, m) = ZOAorZOD_n(n) + los_C[ZOA_2_or_ZOD_3] * am[m];
-                }
-            }
-        }
-        return ZOAorZOD_n_m;
-    }
-    else // случай NLOS
-    {
-        VectorXd ZOAorZOD_n(clusterPowers.size());
-        MatrixXd ZOAorZOD_n_m(clusterPowers.size(), 20);
+       
         for (int n = 0; n < clusterPowers.size(); n++)
         {
             double Xn = XnDist();
-            double C_phi = 1.184;
-            double Yn = YnDist();
-            ZOAorZOD_n(n) = (2 * (ZSAorZSD / 1.4) * pow(-log(clusterPowers[n] / maxPower), 0.5)) / C_phi;
 
-            ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD;
+            double Yn = YnDist();
+
+            ZOAorZOD_n(n) = -1 * ZSAorZSD * log(clusterPowers[n] / maxPower) / C_theta;
+
+            if (n == 0)
+            {
+                X1 = Xn;
+                Y1 = Yn;
+                ZOAorZOD_n1 = ZOAorZOD_n(n);
+                ZOAorZOD_n_m(n, 0) = ZOAorZOD;
+            }
+
+            ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD - ZOAorZOD_n1 * X1 - Y1 + meanOffsetZOD;
+
+            for (int m = 0; m < 20; ++m)
+            {
+                ZOAorZOD_n_m(n + 1, m) = ZOAorZOD_n(n) + los_C[ZOA_2_or_ZOD_3] * am[m];
+
+                if (ZOAorZOD_n_m(n + 1, m) >= 180 && ZOAorZOD_n_m(n + 1, m) <= 360) {
+                    ZOAorZOD_n_m(n + 1, m) = 360 - ZOAorZOD_n_m(n + 1, m);
+                }
+            }
+
+        }
+        return ZOAorZOD_n_m;
+    }
+    else 
+    {
+        VectorXd ZOAorZOD_n(clusterPowers.size());
+        MatrixXd ZOAorZOD_n_m(clusterPowers.size(), 20);
+        C_theta = 1.184;
+        for (int n = 0; n < clusterPowers.size(); n++)
+        {
+            double Xn = XnDist();
+            double Yn = YnDist();
+
+            ZOAorZOD_n(n) = -1 * ZSAorZSD * log(clusterPowers[n] / maxPower) / C_theta;
+
+            ZOAorZOD_n(n) = ZOAorZOD_n(n) * Xn + Yn + ZOAorZOD + meanOffsetZOD;
 
             for (int m = 0; m < 20; ++m)
             {
                 ZOAorZOD_n_m(n, m) = ZOAorZOD_n(n) + nlos_C[ZOA_2_or_ZOD_3] * am[m];
+
+                if (ZOAorZOD_n_m(n, m) >= 180 && ZOAorZOD_n_m(n, m) <= 360) {
+                    ZOAorZOD_n_m(n, m) = 360 - ZOAorZOD_n_m(n, m);
+                }
             }
         }
         return ZOAorZOD_n_m;
@@ -716,42 +744,25 @@ std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vec
     std::complex<double> weighted_sumZOD(0.0, 0.0);
     double weighted_sumPowers = 0.0;
 
-
-
-
-
     // Вычисление взвешенной суммы комплексных экспонент
     for (int n = 0; n < clasterPowers.size(); ++n) {
         for (int m = 0; m < 20; ++m) {
-            if (los && clasterPowers.size() == 1) {
-                weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n + 1, m)));
-                weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n + 1, m)));
-                weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n + 1, m)));
-                weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n + 1, m)));
-                weighted_sumPowers += (clasterPowers[n] / 20);
-                continue;
-            }
-            else if (los) {
-                weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n + 1, m)));
-                weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n + 1, m)));
-                weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n + 1, m)));
-                weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n + 1, m)));
+            if (los) {
+                weighted_sumAOD += (clasterPowers[n] / 20) * std::complex<double>(cos(AOD(n + 1, m)), sin(AOD(n + 1, m)));
+                weighted_sumAOA += (clasterPowers[n] / 20) * std::complex<double>(cos(AOA(n + 1, m)), sin(AOA(n + 1, m)));
+                weighted_sumZOD += (clasterPowers[n] / 20) * std::complex<double>(cos(ZOD(n + 1, m)), sin(ZOD(n + 1, m)));
+                weighted_sumZOA += (clasterPowers[n] / 20) * std::complex<double>(cos(ZOA(n + 1, m)), sin(ZOA(n + 1, m)));
                 weighted_sumPowers += (clasterPowers[n] / 20);
             }
             else if (!los) {
-                weighted_sumAOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOD(n, m)));
-                weighted_sumAOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, AOA(n, m)));
-                weighted_sumZOD += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOD(n, m)));
-                weighted_sumZOA += (clasterPowers[n] / 20) * std::exp(std::complex<double>(0.0, ZOA(n, m)));
+                weighted_sumAOD += (clasterPowers[n] / 20) * std::complex<double>(cos(AOD(n, m)), sin(AOD(n, m)));
+                weighted_sumAOA += (clasterPowers[n] / 20) * std::complex<double>(cos(AOA(n, m)), sin(AOA(n, m)));
+                weighted_sumZOD += (clasterPowers[n] / 20) * std::complex<double>(cos(ZOD(n, m)), sin(ZOD(n, m)));
+                weighted_sumZOA += (clasterPowers[n] / 20) * std::complex<double>(cos(ZOA(n, m)), sin(ZOA(n, m)));
                 weighted_sumPowers += (clasterPowers[n] / 20);
             }
-
-
         }
     }
-
-
-
 
     // Вычисление углового рассеяния
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(sqrt(-2.0 * std::log(std::abs(weighted_sumAOD / weighted_sumPowers))));
@@ -764,11 +775,9 @@ std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vec
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumAOA.imag(), weighted_sumAOA.real()));
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumZOD.imag(), weighted_sumZOD.real()));
     ASandMeanAnglesforAOD_AOA_ZOD_ZOA.push_back(atan2(weighted_sumZOA.imag(), weighted_sumZOA.real()));
+
     return ASandMeanAnglesforAOD_AOA_ZOD_ZOA;
 }
-
-
-
 
 //_________________________________________STEP_8_____________________________________________________//
 // Функция для перемешивания лучей (путей) в 4 углах для каждого кластера
@@ -872,15 +881,10 @@ void randomCouplingRays(Eigen::MatrixXd& matrix1, Eigen::MatrixXd& matrix2,
 //___________________________________Функция_для_генерации_матриц_поляризации______________________________//
 Eigen::MatrixXd generateXPR(bool los, const std::vector<double>& clusterPowers) {
 
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
     Eigen::MatrixXd XPR(clusterPowers.size(), 20);
-    double mean_Xn = 10;
-
-    if (los) { mean_Xn = 11; }
-    GaussGenerator XnmDist(mean_Xn, 16);
+    double mean_Xn = 10.0;
+    if (los) { mean_Xn = 11.0; }
+    GaussGenerator XnmDist(mean_Xn, 4.0);
 
     for (int n = 0; n < clusterPowers.size(); ++n) {
         for (int m = 0; m < 20; ++m) {
@@ -1122,7 +1126,7 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
                         if (m < 8 || m >17) {
                             channelCoefficients_u_s_n(s + u + pair, 3 * n - 2) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
-                        else if ((m > 8 && m < 12) || (m > 15 && m < 18)) {
+                        else if ((m > 7 && m < 12) || (m > 15 && m < 18)) {
                             channelCoefficients_u_s_n(s + u + pair, 3 * n + -1) += sqrt(clusterPowers[n] / 20) * channelCoefficients_n;
                         }
                         else {
@@ -1181,40 +1185,77 @@ Eigen::MatrixXcd generateLOSChannelCoefficients(const UserTerminal& transmitter,
 }
 
 //_________________________________________________STEP_2__________________________________________//
-bool generateLOSorNLOS(double distance) {
+bool generateLOSorNLOS(double distance, int Open0orMixed1) {
     UniformGenerator<double> pDist(0.0, 1.0); // равномерное распределение вероятности LOS (подброс монетка)
     double P_LOS;
     bool los;
     double p; // случайно сгенерированная вероятность (порог LOS)
-    if (distance <= 5) {
-        P_LOS = 1;
-        los = true;
-        std::cout << "Link - LOS" << std::endl;
-    }
-    else if (distance > 5 && distance <= 49) {
-        P_LOS = exp(-(distance - 5) / 70.8);
-        p = pDist();
-        // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
-        if (P_LOS > p) {
+
+    if (Open0orMixed1 == 0) {
+        if (distance <= 5.0) {
+            P_LOS = 1;
             los = true;
             std::cout << "Link - LOS" << std::endl;
         }
+        else if (distance > 5 && distance <= 49) {
+            P_LOS = exp(-(distance - 5) / 70.8);
+            p = pDist();
+            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+            if (P_LOS > p) {
+                los = true;
+                std::cout << "Link - LOS" << std::endl;
+            }
+            else {
+                los = false;
+                std::cout << "Link - NLOS" << std::endl;
+            }
+        }
         else {
-            los = false;
-            std::cout <<  "Link - NLOS" << std::endl;
+            P_LOS = exp(-(distance - 49) / 211.7) * 0.54;
+            p = pDist();
+            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+            if (P_LOS > p) {
+                los = true;
+                std::cout << "Link - LOS" << std::endl;
+            }
+            else {
+                los = false;
+                std::cout << "Link - NLOS" << std::endl;
+            }
         }
     }
-    else {
-        P_LOS = exp(-(distance - 49) / 211.7) * 0.54;
-        p = pDist();
-        // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
-        if (P_LOS > p) {
+
+    else if (Open0orMixed1 == 1) {
+        if (distance <= 1.2) {
+            P_LOS = 1;
             los = true;
-            std::cout <<  "Link - LOS" << std::endl;
+            std::cout << "Link - LOS" << std::endl;
+        }
+        else if (distance > 1.2 && distance <= 6.5) {
+            P_LOS = exp(-(distance - 1.2) / 4.7);
+            p = pDist();
+            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+            if (P_LOS > p) {
+                los = true;
+                std::cout << "Link - LOS" << std::endl;
+            }
+            else {
+                los = false;
+                std::cout << "Link - NLOS" << std::endl;
+            }
         }
         else {
-            los = false;
-            std::cout << "Link - NLOS" << std::endl;
+            P_LOS = exp(-(distance - 6.5) / 32.6) * 0.32;
+            p = pDist();
+            // Сравнение с порогом, если P_LOS > p => LOS, иначе NLOS
+            if (P_LOS > p) {
+                los = true;
+                std::cout << "Link - LOS" << std::endl;
+            }
+            else {
+                los = false;
+                std::cout << "Link - NLOS" << std::endl;
+            }
         }
     }
     return los;
@@ -1265,7 +1306,8 @@ int main() {
             // Проверяем расстояние до всех существующих пользователей
             isValidPosition = true; // Предполагаем, что позиция валидна
             for (const auto& user : users) {
-                if (calculateDistance(newUT, user) < 1.0) {
+                double distanseUTnew_UT = calculateDistance(newUT, user);
+                if (distanseUTnew_UT < 1.5 ) {
                     isValidPosition = false; // Позиция невалидна
                     break; // Выходим из цикла
                 }
@@ -1321,7 +1363,7 @@ int main() {
         std::cout << "Distance between transmitter and receiver is " << distance_tx_rx << std::endl;
 
         //Определяем вид линка
-        bool los =  generateLOSorNLOS(distance_tx_rx);
+        bool los =  generateLOSorNLOS(distance_tx_rx, 0);
 
         //__STEP3__//
         double path_loss = calculatePathLoss(los, distance_tx_rx,nu);
@@ -1340,27 +1382,59 @@ int main() {
         // Генерация мощностей кластеров
         std::vector<double> clusterPowers = generateClusterPowers(los, clusterDelays, lsp.delaySpread);
 
-        //оставляю лишь нужные задержки  и сортирую их с мощностями 
-        for (int i = indicesToDelete.size() - 1; i >= 0; --i) {
-            clusterDelays.erase(clusterDelays.begin() + indicesToDelete[i]);
-        }
-        indicesToDelete.clear();
-        std::pair<std::vector<double>, std::vector<double>> sortClusterPowers_ClusterDelays = sort_with_indices(clusterPowers, clusterDelays);
-        clusterPowers = sortClusterPowers_ClusterDelays.first;
-        clusterDelays = sortClusterPowers_ClusterDelays.second;
-
-        std::vector<double> clusterPowersWithScalingFactors = clusterPowers;
-        if (los) {
-
-            for (size_t n = 0; n < clusterPowersWithScalingFactors.size(); ++n) {
-                clusterPowersWithScalingFactors[n] *= (1 / (pow(10, lsp.riceanK / 10) + 1))  ;
-            }
-            clusterPowersWithScalingFactors[0] += pow(10, lsp.riceanK / 10) / (pow(10, lsp.riceanK / 10) + 1);
-        }
-
         // Выводы значений 
         std::cout << "Cluster delays for UT " << ":\n\n";
         int j = 1;
+        for (const auto& delay : clusterDelays) {
+            std::cout << "-delay for power #" << j << " : " << delay << "\n";
+            j++;
+        }
+        std::cout << std::endl;
+
+        std::cout << "Cluster powers for User " << transmitter.id << " and User " << receiver.id << ": ";
+        for (const auto& power : clusterPowers) {
+            std::cout << power << " ";
+        }
+        std::cout << std::endl << std::endl;
+
+        std::vector<double> clusterPowersWithScalingFactors = clusterPowers;
+
+        if (los) {
+
+            for (size_t n = 0; n < clusterPowersWithScalingFactors.size(); ++n) {
+                clusterPowersWithScalingFactors[n] *= (1 / (pow(10, lsp.riceanK / 10) + 1));
+            }
+            clusterPowersWithScalingFactors[0] += pow(10, lsp.riceanK / 10) / (pow(10, lsp.riceanK / 10) + 1);
+
+
+        }
+        std::vector<double> clusterPowers_main;
+        double maxPower = *max_element(clusterPowersWithScalingFactors.begin(), clusterPowersWithScalingFactors.end());
+        double threshold = maxPower * 0.00316228; // Порог для удаления
+        for (size_t n = 0; n < clusterPowersWithScalingFactors.size(); ++n) {
+            if (clusterPowersWithScalingFactors[n] > threshold)
+            {
+                clusterPowers_main.emplace_back(clusterPowersWithScalingFactors[n]);
+
+            }
+        else { indicesToDelete.push_back(n); }
+        }
+
+        clusterPowersWithScalingFactors = clusterPowers_main;
+        
+
+
+        //оставляю лишь нужные задержки  и сортирую их с мощностями 
+        for (int i = indicesToDelete.size() - 1; i >= 0; --i) {
+            clusterDelays.erase(clusterDelays.begin() + indicesToDelete[i]);
+            clusterPowers.erase(clusterPowers.begin() + indicesToDelete[i]);
+        }
+
+        indicesToDelete.clear();
+
+        // Выводы значений 
+        std::cout << "Cluster delays for UT " << ":\n\n";
+        j = 1;
         for (const auto& delay : clusterDelays) {
             std::cout << "-delay for power #" << j << " : " << delay << "\n";
             j++;
@@ -1378,6 +1452,8 @@ int main() {
             std::cout << powerWithScalingFactors << " ";
         }
         std::cout << std::endl << std::endl;
+
+
 
         //_____________STEP_7_______________//
         //Generate arrival angles and departure angles for both azimuth and elevation
