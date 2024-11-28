@@ -951,15 +951,15 @@ bool generateLOSorNLOS(double distance , int Open0orMixed1) {
 
 //_________________________________________________STEP_3__________________________________________//
 double calculatePathLoss(bool los, double distance, double nu) {
-    double path_loss;
-    if (los)
+    double lospath_loss = 32.4 + 17.3 * log10(distance) + 20 * log10(nu);
+    double path_loss = lospath_loss;
+    if (!los)
     {
-        path_loss = 32.4 + 17.3 * log10(distance) + 20 * log10(nu);
+        double nlospath_loss = 38.3 * log10(distance) + 17.30 + 24.9 * log10(nu);
+        path_loss = std::max(lospath_loss, nlospath_loss);
     }
-    else
-    {
-        path_loss = 38.3 * log10(distance) + 17.30 + 24.9 * log10(nu);
-    }
+    
+
     return path_loss;
 }
 
@@ -968,6 +968,9 @@ int main()
 {   
     std::ofstream AS_AOA_CDF, AS_AOD_CDF, AS_ZOA_CDF, AS_ZOD_CDF;
     std::ofstream Mean_AOA_CDF, Mean_AOD_CDF, Mean_ZOA_CDF, Mean_ZOD_CDF;
+    std::ofstream PathLOSS;
+
+    PathLOSS << std::fixed << std::setprecision(5);
 
     AS_AOA_CDF << std::fixed << std::setprecision(5);
     AS_AOD_CDF << std::fixed << std::setprecision(5);
@@ -979,6 +982,7 @@ int main()
     Mean_ZOA_CDF << std::fixed << std::setprecision(5);
     Mean_ZOD_CDF << std::fixed << std::setprecision(5);
     
+    PathLOSS.open("PathLOSS.txt");
 
     AS_AOA_CDF.open("AS_AOA_CDF.txt");
     AS_AOD_CDF.open("AS_AOD_CDF.txt");
@@ -1037,7 +1041,7 @@ int main()
     double wavelength = 30000000 / nu;     // Длина волны 
 
     
-    for (int rooms = 0; rooms <= 1000; ++rooms) {
+    for (int rooms = 0; rooms <= 2000; ++rooms) {
 
         // Создаем пользователей 
         std::vector<UserTerminal> users;
@@ -1105,10 +1109,13 @@ int main()
             //std::cout << "Distance between transmitter and receiver is " << distance_tx_rx << std::endl;
 
             //Определяем вид линка
-            bool los = generateLOSorNLOS(distance_tx_rx,1);
+            bool los = generateLOSorNLOS(distance_tx_rx,0);
 
             //__STEP3__//
             double path_loss = calculatePathLoss(los, distance_tx_rx, nu);
+
+            PathLOSS << path_loss << std::endl;
+
             //std::cout << "PathLoss[dB]  = " << path_loss << std::endl << std::endl;
 
             //_________________________________________________STEP_4__________________________________________//
@@ -1310,3 +1317,50 @@ title('Кумулятивная распределительная функци�
 grid on;
 legend show; % Показываем легенду
 legend('AS_AOD', 'AS_ZOD', 'Location', 'Best');*/
+
+/*filename_LOS = 'C:\Users\RadioChelik322\source\repos\Test_gen\Mean_ZOA_CDF.txt';
+data_LOS = load(filename_LOS);
+sortedData_LOS = sort(data_LOS);
+n_LOS = length(sortedData_LOS);
+cdfValues_LOS = (1:n_LOS) / n_LOS;
+
+% Загрузка данных для NLOS
+filename_NLOS = 'C:\Users\RadioChelik322\source\repos\Test_gen\Mean_ZOD_CDF.txt';
+data_NLOS = load(filename_NLOS);
+sortedData_NLOS = sort(data_NLOS);
+n_NLOS = length(sortedData_NLOS);
+cdfValues_NLOS = (1:n_NLOS) / n_NLOS;
+
+% Построение графиков
+figure;
+plot(sortedData_LOS, cdfValues_LOS, 'LineWidth', 2, 'DisplayName', 'Mean ZOA'); % График LOS
+hold on; % Удерживаем текущий график
+plot(sortedData_NLOS, cdfValues_NLOS, 'LineWidth', 2, 'DisplayName', 'Mean ZOD'); % График NLOS
+hold on;
+
+filename_LOS = 'C:\Users\RadioChelik322\source\repos\Test_gen\Mean_AOA_CDF.txt';
+data_LOS = load(filename_LOS);
+sortedData_LOS = sort(data_LOS);
+n_LOS = length(sortedData_LOS);
+cdfValues_LOS = (1:n_LOS) / n_LOS;
+
+plot(sortedData_LOS, cdfValues_LOS, 'LineWidth', 2, 'DisplayName', 'Mean AOA'); % График LOS
+hold on; % Удерживаем текущий график
+% Загрузка данных для NLOS
+
+filename_NLOS = 'C:\Users\RadioChelik322\source\repos\Test_gen\Mean_AOD_CDF.txt';
+data_NLOS = load(filename_NLOS);
+sortedData_NLOS = sort(data_NLOS);
+n_NLOS = length(sortedData_NLOS);
+cdfValues_NLOS = (1:n_NLOS) / n_NLOS;
+
+plot(sortedData_NLOS, cdfValues_NLOS, 'LineWidth', 2, 'DisplayName', 'Mean AOD'); % График NLOS
+hold on;
+% Настройка графика
+
+grid on;
+legend show; % Показываем легенду
+% Настройка графика
+xlabel('Mean, rad');
+ylabel('CDF');
+title('CDF Mean  AOD, AOA,ZOD, ZOA для 30ГГЦ ');*/

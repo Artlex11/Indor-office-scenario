@@ -547,7 +547,7 @@ std::vector<double> generateClusterPowers(bool los, const std::vector<double>& c
 double los_C_ASA = 8.0;
 double los_C_ASD = 5.0;
 double los_C_ZSA = 9.0;
-double los_C_ZSD = 0.375 * pow(10, -1.43 * log(1 + 30) + 2.228);
+double los_C_ZSD = 0.375 * pow(10, -1.43 * log(1 + 3) + 2.228);
 
 double nlos_C_ASA = 11.0;
 double nlos_C_ASD = 5.0;
@@ -1541,15 +1541,24 @@ int main() {
             }
             std::cout << std::endl;
         }
-        //_____________STEP_11_______________//
+
+
+        std::sort(clusterPowers.begin(), clusterPowers.end(), std::greater<double>());
+        std::cout << "Sort powers: ";
+        for (const auto& power : clusterPowers) {
+            std::cout << power << " ";
+        }
+
+        std::cout << std::endl << std::endl;
+        //_____________STEP_11_ and_12______________//
         if (!los) {
-            Eigen::MatrixXcd channelСoefficients = generateNLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
-            Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
+            MatrixXcd channelСoefficients = generateNLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases);
+            MatrixXd modulusMatrix = channelСoefficients.array().abs() * pow(10, lsp.shadowFading / 10) / pow(10, path_loss / 10) ;
             std::cout << "Module channelCoefficients:\n" << modulusMatrix << std::endl;
         }
         else {
-            Eigen::MatrixXcd channelСoefficients = generateLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases, lsp.riceanK);
-            Eigen::MatrixXd modulusMatrix = channelСoefficients.array().abs();
+            MatrixXcd channelСoefficients = generateLOSChannelCoefficients(transmitter, receiver, clusterPowers, PhiAOD, PhiAOA, ThetaZOD, ThetaZOA, XPR, initialPhases, lsp.riceanK);
+            MatrixXd modulusMatrix = channelСoefficients.array().abs() * pow(10, lsp.shadowFading / 10) / pow(10, path_loss / 10) ;
             std::cout << "Module channelCoefficients:\n" << modulusMatrix << std::endl;
         }
     }
