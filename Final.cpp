@@ -1301,23 +1301,42 @@ int main() {
 
         UserTerminal newUT(i, 0, 0, userHeight, bearing, downtilt, slant);
         bool isValidPosition = false;
+        bool check = true; // переменная проверки дистанций между всеми пользователями
         double distanseUTnew_UT;
 
         while (!isValidPosition) {
             newUT.x = xDist();
             newUT.y = yDist();
-            // Условие создания первого пользователя
-            if (i == 0) {
+            // Условие создания первого пользователя (Просто создаём пользователя и выходим)
+            if (i % 2 == 0) {
                 break;
             }
-            
-            if (i >= 1) {
-                distanseUTnew_UT = calculateDistance(newUT, users[i - 1]);
-                if (distanseUTnew_UT > 1.5 and distanseUTnew_UT < 30) {
-                    isValidPosition = true; // Позиция валидна
-                    break; // Выходим из цикла
+
+            if (!isValidPosition) {
+                
+                for (int j = 0; j < i; j++) {
+                    distanseUTnew_UT = calculateDistance(newUT, users[j]);
+                    if (distanseUTnew_UT < 0.2) { //0.2 - 2 лямбды
+                        check = false;
+                        break; // Выходим из цикла
+                    }
+                }
+
+                if (!check) { // если проверка дистанций не прошла, то выходим из цикла
+                    break;
+                }
+
+                if (i >= 1 and i % 2 == 1) { // проверка дистанций для чётных юзеров(под нечётными номерами для создания пары с предыдущим
+                    distanseUTnew_UT = calculateDistance(newUT, users[i - 1]);
+                    if (distanseUTnew_UT > 1.5 and distanseUTnew_UT < 30) {
+                        isValidPosition = true; // Позиция валидна
+                        break; // Выходим из цикла
+                    }
                 }
             }
+            else
+                break;
+            
         }
         users.push_back(newUT);
         //std::cout << "Distanse: " << distanseUTnew_UT << std::endl;
